@@ -483,160 +483,245 @@ fun MenuButton(text: String, onClick: () -> Unit, isPrimary: Boolean = false) {
     }
 }
 
+data class MapNode(
+    val index: Int,
+    val x: Float, // fraction of width
+    val y: Float  // fraction of height
+)
+
 @Composable
 fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onBack: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "portal")
-    val portalRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
+    var selectedStageIndex by remember { mutableIntStateOf(0) }
+    val currentStage = Stages.stagesList.getOrNull(selectedStageIndex) ?: Stages.stagesList[0]
+    val isSelectedUnlocked = selectedStageIndex < unlockedStageCount
 
     Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.fillMaxSize()
     ) {
+        // Main map background image
         Image(
             painter = painterResource(id = R.drawable.bg_map),
-            contentDescription = "Background",
-            contentScale = ContentScale.Crop,
+            contentDescription = "Campaign Map",
+            contentScale = ContentScale.FillBounds,
             modifier = Modifier.fillMaxSize()
         )
+
+        // Subtle dark overlay to ground the UI elements
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.45f))
+                .background(Color.Black.copy(alpha = 0.05f)) // extremely light so map art stays fully clear
         )
 
-        // Rotating Space-Time Portal representation background
-        Box(
-            modifier = Modifier
-                .size(450.dp)
-                .rotate(portalRotation)
-                .alpha(0.15f)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0xFF1B0B33), Color(0xFF0F041A), Color.Transparent)
-                    )
-                )
-        )
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize().padding(16.dp)
+        // Map Node Hotspots overlay
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "BACK TO MENU",
-                    color = Color.Gray,
-                    fontSize = 11.sp,
-                    letterSpacing = 2.sp,
+            val containerWidth = maxWidth
+            val containerHeight = maxHeight
+
+            val mapNodes = listOf(
+                MapNode(1, 0.13f, 0.23f),
+                MapNode(2, 0.35f, 0.26f),
+                MapNode(3, 0.57f, 0.29f),
+                MapNode(4, 0.81f, 0.34f),
+                MapNode(5, 0.61f, 0.51f),
+                MapNode(6, 0.40f, 0.54f),
+                MapNode(7, 0.14f, 0.52f),
+                MapNode(8, 0.79f, 0.60f),
+                MapNode(9, 0.08f, 0.74f),
+                MapNode(10, 0.31f, 0.75f),
+                MapNode(11, 0.54f, 0.75f),
+                MapNode(12, 0.77f, 0.85f),
+                MapNode(13, 0.41f, 0.94f)
+            )
+
+            mapNodes.forEach { node ->
+                val idx = node.index - 1
+                val isUnlocked = idx < unlockedStageCount
+                val isSelected = selectedStageIndex == idx
+
+                // Pulsing animation for selected/active nodes
+                val infiniteTransition = rememberInfiniteTransition(label = "pulse_${node.index}")
+                val pulseScale by infiniteTransition.animateFloat(
+                    initialValue = 0.8f,
+                    targetValue = 1.6f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1200, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "scale"
+                )
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.6f,
+                    targetValue = 0.0f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1200, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "alpha"
+                )
+
+                // Position node container box
+                Box(
                     modifier = Modifier
-                        .clickable { onBack() }
-                        .padding(8.dp)
-                )
-                Text(
-                    text = "THE 13 CHRONICLES PORTALS",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 4.sp
-                )
-                Spacer(modifier = Modifier.width(100.dp))
-            }
+                        .size(36.dp)
+                        .absoluteOffset(
+                            x = containerWidth * node.x - 18.dp,
+                            y = containerHeight * node.y - 18.dp
+                        )
+                        .clickable { selectedStageIndex = idx },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isUnlocked) {
+                        // Outer glowing pulse ring
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .graphicsLayer {
+                                    scaleX = if (isSelected) pulseScale else 1.0f
+                                    scaleY = if (isSelected) pulseScale else 1.0f
+                                    alpha = if (isSelected) pulseAlpha else 0.4f
+                                }
+                                .background(
+                                    color = if (isSelected) Color(0xFFD41414) else Color(0xFFFFCC00),
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                        )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Horizon layout for 13 Stage Nodes
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentPadding = PaddingValues(horizontal = 48.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                itemsIndexed(Stages.stagesList) { idx, stage ->
-                    val isUnlocked = idx < unlockedStageCount
-                    StageNode(idx + 1, stage.title, stage.objective, isUnlocked) {
-                        if (isUnlocked) onSelectStage(idx)
+                        // Inner solid indicator dot
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .background(
+                                    color = if (isSelected) Color.White else Color(0xFFD41414),
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                                .border(
+                                    width = 1.5.dp,
+                                    color = Color.Black,
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                        )
+                    } else {
+                        // Locked node indicator (gray)
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(
+                                    color = Color.Gray,
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                                .border(
+                                    width = 1.5.dp,
+                                    color = Color.Black,
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                        )
                     }
                 }
             }
         }
-    }
-}
 
-@Composable
-fun StageNode(num: Int, title: String, objective: String, isUnlocked: Boolean, onClick: () -> Unit) {
-    val scale = if (isUnlocked) 1.0f else 0.85f
-    val alpha = if (isUnlocked) 1.0f else 0.4f
-    
-    Box(
-        modifier = Modifier
-            .width(220.dp)
-            .height(280.dp)
-            .scale(scale)
-            .graphicsLayer { this.alpha = alpha }
-            .border(
-                width = if (isUnlocked) 1.5.dp else 1.dp,
-                color = if (isUnlocked) Color(0xFFD41414).copy(alpha = 0.8f) else Color.DarkGray.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .background(
-                color = if (isUnlocked) Color.Black.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .clickable { onClick() }
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxSize()
+        // Unified Glassmorphic Top Header Bar (acting as both Header and selected details card)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.90f),
+                            Color(0xFF1E0505).copy(alpha = 0.80f),
+                            Color.Transparent
+                        )
+                    )
+                )
+                .padding(horizontal = 24.dp, vertical = 12.dp)
         ) {
-            Text(
-                text = "PORTAL $num",
-                color = if (isUnlocked) Color(0xFFFFCC00) else Color.Gray,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 2.sp
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Left side: Back to Menu button
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .border(1.dp, Color(0xFFD41414).copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                        .clickable { onBack() }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "BACK TO MENU",
+                        color = Color.LightGray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
+                }
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = objective,
-                    color = Color.Gray,
-                    fontSize = 11.sp,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 14.sp
-                )
+                // Center: Current Selected Stage Details
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "PORTAL ${selectedStageIndex + 1}: ${currentStage.title}",
+                        color = Color(0xFFFFCC00),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = currentStage.objective,
+                        color = Color.LightGray,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                // Right side: Enter Portal action button
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            if (isSelectedUnlocked) {
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color(0xFF8F0F0F), Color(0xFFD41414), Color(0xFF8F0F0F))
+                                )
+                            } else {
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color.DarkGray, Color.Gray, Color.DarkGray)
+                                )
+                            }
+                        )
+                        .border(
+                            1.dp,
+                            if (isSelectedUnlocked) Color.White.copy(alpha = 0.3f) else Color.Transparent,
+                            RoundedCornerShape(20.dp)
+                        )
+                        .clickable(enabled = isSelectedUnlocked) {
+                            onSelectStage(selectedStageIndex)
+                        }
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isSelectedUnlocked) "ENTER PORTAL" else "LOCKED",
+                        color = if (isSelectedUnlocked) Color.White else Color.LightGray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
+                }
             }
-
-            Text(
-                text = if (isUnlocked) "ENTER PORTAL" else "LOCKED",
-                color = if (isUnlocked) Color(0xFFD41414) else Color.DarkGray,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
-            )
         }
     }
 }
