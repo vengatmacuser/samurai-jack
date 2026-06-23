@@ -255,6 +255,7 @@ fun SplashScreen(onStart: () -> Unit) {
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxSize()
+                    .offset(y = 40.dp)
                     .scale(scale.value)
             ) {
                 // Unified premium glassmorphic card container
@@ -376,7 +377,9 @@ fun MainMenuScreen(onStart: () -> Unit, onSelectStage: () -> Unit) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = 40.dp)
         ) {
             // Unified premium glassmorphic card container for consistency
             Box(
@@ -498,7 +501,7 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.main_background),
+            painter = painterResource(id = R.drawable.bg_map),
             contentDescription = "Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
@@ -506,7 +509,7 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f))
+                .background(Color.Black.copy(alpha = 0.45f))
         )
 
         // Rotating Space-Time Portal representation background
@@ -584,13 +587,13 @@ fun StageNode(num: Int, title: String, objective: String, isUnlocked: Boolean, o
             .scale(scale)
             .graphicsLayer { this.alpha = alpha }
             .border(
-                1.dp,
-                if (isUnlocked) Color(0xFFD41414) else Color.DarkGray,
-                RoundedCornerShape(8.dp)
+                width = if (isUnlocked) 1.5.dp else 1.dp,
+                color = if (isUnlocked) Color(0xFFD41414).copy(alpha = 0.8f) else Color.DarkGray.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(12.dp)
             )
             .background(
-                if (isUnlocked) Color(0xFF160A0D) else Color(0xFF0F0F12),
-                RoundedCornerShape(8.dp)
+                color = if (isUnlocked) Color.Black.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(12.dp)
             )
             .clickable { onClick() }
             .padding(16.dp),

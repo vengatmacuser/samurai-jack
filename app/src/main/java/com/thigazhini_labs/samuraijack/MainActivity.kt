@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     // Core Game States
     var gameState by mutableStateOf(GameState.SPLASH)
     var currentStageIndex by mutableIntStateOf(0)
-    var unlockedStageCount by mutableIntStateOf(1)
+    var unlockedStageCount by mutableIntStateOf(13)
     
     // Player statistics
     var playerHealth by mutableFloatStateOf(100f)
@@ -129,7 +129,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         setContent {
             val bgResId = when (gameState) {
-                GameState.SPLASH, GameState.MAIN_MENU, GameState.STAGE_SELECT -> R.drawable.main_background
+                GameState.SPLASH, GameState.MAIN_MENU -> R.drawable.main_background
+                GameState.STAGE_SELECT -> R.drawable.bg_map
                 else -> {
                     when (currentStageIndex) {
                         0 -> R.drawable.bg_frosthollow // Stage 1: Frosthollow Mine
