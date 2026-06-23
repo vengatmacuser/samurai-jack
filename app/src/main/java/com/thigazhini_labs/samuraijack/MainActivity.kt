@@ -278,7 +278,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val diffX = event.x - touchStartX
                 if (abs(diffX) > 20f && !isJumping && jackState != "Attack" && jackState != "Block") {
                     jackState = "Run"
-                    jackPos.x = (diffX / 100f).coerceIn(-4.5f, 4.5f)
+                    val limitX = if (currentStageIndex == 0) floatArrayOf(-6.0f, 6.0f) else floatArrayOf(-4.5f, 4.5f)
+                    jackPos.x = (diffX / 100f).coerceIn(limitX[0], limitX[1])
                 }
             }
             MotionEvent.ACTION_UP -> {
@@ -534,7 +535,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private fun triggerDodge(dir: Int) {
         if (jackState == "Hurt") return
         jackState = "Run"
-        jackPos.x = (jackPos.x + dir * 1.5f).coerceIn(-4.5f, 4.5f)
+        val limitX = if (currentStageIndex == 0) floatArrayOf(-6.0f, 6.0f) else floatArrayOf(-4.5f, 4.5f)
+        jackPos.x = (jackPos.x + dir * 1.5f).coerceIn(limitX[0], limitX[1])
         SoundManager.triggerSlash()
     }
 
@@ -594,8 +596,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         // Apply joystick movement vectors
         if (joystickMoveVec.x != 0f || joystickMoveVec.z != 0f) {
             val moveSpeed = 0.06f
-            jackPos.x = (jackPos.x + joystickMoveVec.x * moveSpeed).coerceIn(-4.5f, 4.5f)
-            jackPos.z = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(-35f, 35f)
+            val limitZ = if (currentStageIndex == 0) floatArrayOf(-15f, 85f) else floatArrayOf(-35f, 35f)
+            val limitX = if (currentStageIndex == 0) floatArrayOf(-6.0f, 6.0f) else floatArrayOf(-4.5f, 4.5f)
+            jackPos.x = (jackPos.x + joystickMoveVec.x * moveSpeed).coerceIn(limitX[0], limitX[1])
+            jackPos.z = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
 
             // Dynamic rotation Y so Jack faces movement direction
             val angleRad = kotlin.math.atan2(joystickMoveVec.x.toDouble(), joystickMoveVec.z.toDouble())
@@ -675,7 +679,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         // 5. Update Projectiles (DISABLED - EXPLORATION MODE)
 
         // 6. Check Win conditions (EXPLORATION GATE EXIT TRIGGER)
-        if (jackPos.z >= 14.2f && enemiesRemaining > 0) {
+        val winZ = if (currentStageIndex == 0) 75.0f else 14.2f
+        if (jackPos.z >= winZ && enemiesRemaining > 0) {
             enemiesRemaining = 0
             gameState = GameState.OUTRO_CUTSCENE
             startCutscene(currentStageIndex, false)
