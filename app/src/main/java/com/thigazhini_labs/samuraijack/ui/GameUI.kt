@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,19 +27,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thigazhini_labs.samuraijack.GameState
 import com.thigazhini_labs.samuraijack.R
 import com.thigazhini_labs.samuraijack.stages.Stages
 import kotlinx.coroutines.delay
+
 
 @Composable
 fun GameUI(
@@ -252,10 +260,10 @@ fun SplashScreen(onStart: () -> Unit) {
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.Bottom,
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset(y = 40.dp)
+                    .padding(bottom = 60.dp)
                     .scale(scale.value)
             ) {
                 // Unified premium glassmorphic card container
@@ -376,10 +384,10 @@ fun MainMenuScreen(onStart: () -> Unit, onSelectStage: () -> Unit) {
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Bottom,
             modifier = Modifier
                 .fillMaxSize()
-                .offset(y = 40.dp)
+                .padding(bottom = 60.dp)
         ) {
             // Unified premium glassmorphic card container for consistency
             Box(
@@ -489,6 +497,25 @@ data class MapNode(
     val y: Float  // fraction of height
 )
 
+fun getMapIconResId(index: Int): Int {
+    return when (index) {
+        0 -> R.drawable.fantasy_map_icons_object_01 // 1: burning castle
+        1 -> R.drawable.fantasy_map_icons_object_02 // 2: dunes training
+        2 -> R.drawable.fantasy_map_icons_object_03 // 3: bridge crossing
+        3 -> R.drawable.fantasy_map_icons_object_04 // 4: sword in stone
+        4 -> R.drawable.fantasy_map_icons_object_06 // 5: dark red castle (formerly 06)
+        5 -> R.drawable.fantasy_map_icons_object_07 // 6: portal (formerly 07)
+        6 -> R.drawable.fantasy_map_icons_object_05 // 7: city of machines (formerly 05)
+        7 -> R.drawable.fantasy_map_icons_object_08 // 8: archer village
+        8 -> R.drawable.fantasy_map_icons_object_11 // 9: highlands floating island (formerly 11)
+        9 -> R.drawable.fantasy_map_icons_object_09 // 10: escape from fortress (formerly 09)
+        10 -> R.drawable.fantasy_map_icons_object_10 // 11: three-eyed beast
+        11 -> R.drawable.fantasy_map_icons_object_12 // 12: lava guardian
+        12 -> R.drawable.fantasy_map_icons_object_13 // 13: path of the ronin torii
+        else -> R.drawable.fantasy_map_icons_object_01
+    }
+}
+
 @Composable
 fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onBack: () -> Unit) {
     var selectedStageIndex by remember { mutableIntStateOf(0) }
@@ -496,14 +523,17 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
     val isSelectedUnlocked = selectedStageIndex < unlockedStageCount
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F0E13)) // solid background under map
     ) {
-        // Main map background image
+        // Main map background image with reduced opacity to enhance contrast of icons and text
         Image(
             painter = painterResource(id = R.drawable.bg_map),
             contentDescription = "Campaign Map",
             contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            alpha = 0.9f
         )
 
         // Subtle dark overlay to ground the UI elements
@@ -511,6 +541,22 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.05f)) // extremely light so map art stays fully clear
+        )
+
+        // Atmospheric "fear background" vignette overlay (dark red/black glow at screen borders)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.3f),
+                            Color(0xFF1E0505).copy(alpha = 0.8f) // Deep blood red fear glow
+                        ),
+                        radius = 1600f
+                    )
+                )
         )
 
         // Map Node Hotspots overlay
@@ -521,20 +567,43 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
             val containerHeight = maxHeight
 
             val mapNodes = listOf(
-                MapNode(1, 0.13f, 0.23f),
-                MapNode(2, 0.35f, 0.26f),
-                MapNode(3, 0.57f, 0.29f),
-                MapNode(4, 0.81f, 0.34f),
-                MapNode(5, 0.61f, 0.51f),
-                MapNode(6, 0.40f, 0.54f),
-                MapNode(7, 0.14f, 0.52f),
-                MapNode(8, 0.79f, 0.60f),
-                MapNode(9, 0.08f, 0.74f),
-                MapNode(10, 0.31f, 0.75f),
-                MapNode(11, 0.54f, 0.75f),
-                MapNode(12, 0.77f, 0.85f),
-                MapNode(13, 0.41f, 0.94f)
+                // Sequence matches physical progression trail: 1 -> 2 -> 3 -> 4 -> 8 -> 5 -> 6 -> 7 -> 9 -> 10 -> 11 -> 12 -> 13
+                MapNode(1, 0.15f, 0.20f),
+                MapNode(2, 0.39f, 0.22f),
+                MapNode(3, 0.67f, 0.18f),
+                MapNode(4, 0.87f, 0.25f),
+                MapNode(8, 0.85f, 0.53f),
+                MapNode(5, 0.67f, 0.46f),
+                MapNode(6, 0.45f, 0.45f),
+                MapNode(7, 0.13f, 0.47f),
+                MapNode(9, 0.12f, 0.70f),
+                MapNode(10, 0.35f, 0.72f),
+                MapNode(11, 0.59f, 0.69f),
+                MapNode(12, 0.85f, 0.78f),
+                MapNode(13, 0.48f, 0.87f)
             )
+
+            // Draw connecting path dashed line
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val path = androidx.compose.ui.graphics.Path()
+                mapNodes.forEachIndexed { i, node ->
+                    val x = size.width * node.x
+                    val y = size.height * node.y
+                    if (i == 0) {
+                        path.moveTo(x, y)
+                    } else {
+                        path.lineTo(x, y)
+                    }
+                }
+                drawPath(
+                    path = path,
+                    color = Color(0xFFD41414), // Red path line
+                    style = Stroke(
+                        width = 4f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 10f), 0f)
+                    )
+                )
+            }
 
             mapNodes.forEach { node ->
                 val idx = node.index - 1
@@ -544,8 +613,8 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
                 // Pulsing animation for selected/active nodes
                 val infiniteTransition = rememberInfiniteTransition(label = "pulse_${node.index}")
                 val pulseScale by infiniteTransition.animateFloat(
-                    initialValue = 0.8f,
-                    targetValue = 1.6f,
+                    initialValue = 0.95f,
+                    targetValue = 1.15f,
                     animationSpec = infiniteRepeatable(
                         animation = tween(1200, easing = FastOutSlowInEasing),
                         repeatMode = RepeatMode.Reverse
@@ -554,7 +623,7 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
                 )
                 val pulseAlpha by infiniteTransition.animateFloat(
                     initialValue = 0.6f,
-                    targetValue = 0.0f,
+                    targetValue = 0.1f,
                     animationSpec = infiniteRepeatable(
                         animation = tween(1200, easing = FastOutSlowInEasing),
                         repeatMode = RepeatMode.Reverse
@@ -562,61 +631,75 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
                     label = "alpha"
                 )
 
-                // Position node container box
+                // Dynamically size key milestones (Aku's Castle Node 5, Time Portal Node 6, Highlands Node 9, Ronin Torii Node 13)
+                val isBigNode = node.index == 5 || node.index == 6 || node.index == 9 || node.index == 13
+                val widthDp = if (isBigNode) 160.dp else 130.dp
+                val heightDp = if (isBigNode) 100.dp else 80.dp
+                val halfWidth = if (isBigNode) 80.dp else 65.dp
+                val halfHeight = if (isBigNode) 50.dp else 40.dp
+
+                // Position node container box centered around path coordinate
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(width = widthDp, height = heightDp)
                         .absoluteOffset(
-                            x = containerWidth * node.x - 18.dp,
-                            y = containerHeight * node.y - 18.dp
+                            x = containerWidth * node.x - halfWidth,
+                            y = containerHeight * node.y - halfHeight
                         )
+                        .alpha(if (isUnlocked) 1.0f else 0.45f)
                         .clickable { selectedStageIndex = idx },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isUnlocked) {
-                        // Outer glowing pulse ring
+                    // Glowing red aura behind selected node
+                    if (isSelected) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(width = widthDp - 15.dp, height = heightDp - 15.dp)
                                 .graphicsLayer {
-                                    scaleX = if (isSelected) pulseScale else 1.0f
-                                    scaleY = if (isSelected) pulseScale else 1.0f
-                                    alpha = if (isSelected) pulseAlpha else 0.4f
+                                    scaleX = pulseScale
+                                    scaleY = pulseScale
+                                    alpha = pulseAlpha
                                 }
                                 .background(
-                                    color = if (isSelected) Color(0xFFD41414) else Color(0xFFFFCC00),
-                                    shape = androidx.compose.foundation.shape.CircleShape
+                                    color = Color(0xFFD41414),
+                                    shape = RoundedCornerShape(16.dp)
                                 )
                         )
+                    }
 
-                        // Inner solid indicator dot
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .background(
-                                    color = if (isSelected) Color.White else Color(0xFFD41414),
-                                    shape = androidx.compose.foundation.shape.CircleShape
-                                )
-                                .border(
-                                    width = 1.5.dp,
-                                    color = Color.Black,
-                                    shape = androidx.compose.foundation.shape.CircleShape
-                                )
-                        )
-                    } else {
-                        // Locked node indicator (gray)
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .background(
-                                    color = Color.Gray,
-                                    shape = androidx.compose.foundation.shape.CircleShape
-                                )
-                                .border(
-                                    width = 1.5.dp,
-                                    color = Color.Black,
-                                    shape = androidx.compose.foundation.shape.CircleShape
-                                )
+                    // Main custom illustrated fantasy icon (with built-in text label)
+                    Image(
+                        painter = painterResource(id = getMapIconResId(idx)),
+                        contentDescription = "Stage ${node.index} Icon",
+                        modifier = Modifier.size(width = widthDp, height = heightDp),
+                        contentScale = ContentScale.Fit
+                    )
+
+                    // Small gold circular badge displaying the stage number
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .align(Alignment.TopEnd)
+                            .absoluteOffset(
+                                x = if (isBigNode) (-24).dp else (-12).dp,
+                                y = if (isBigNode) 10.dp else 6.dp
+                            )
+                            .background(
+                                color = Color(0xFFFFD700), // Gold
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = Color.Black,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${node.index}",
+                            color = Color.Black,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -673,9 +756,17 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
                     Text(
                         text = "PORTAL ${selectedStageIndex + 1}: ${currentStage.title}",
                         color = Color(0xFFFFCC00),
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Text(
+                        text = currentStage.subtitle.uppercase(),
+                        color = Color(0xFFD41414), // Red fear subtitle
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 2.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -917,6 +1008,102 @@ fun CutsceneOverlay(typedText: String, onAdvance: () -> Unit) {
 }
 
 @Composable
+fun SlantedProgressBar(
+    progress: Float,
+    laggingProgress: Float = progress,
+    color: Brush,
+    laggingColor: Color = Color.Transparent,
+    backgroundColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val skew = height * 0.4f // Slant angle proportion
+        
+        // Background path
+        val bgPath = androidx.compose.ui.graphics.Path().apply {
+            moveTo(skew, 0f)
+            lineTo(width, 0f)
+            lineTo(width - skew, height)
+            lineTo(0f, height)
+            close()
+        }
+        drawPath(bgPath, color = backgroundColor)
+        
+        // Lagging progress path (if any)
+        if (laggingProgress > progress && laggingColor != Color.Transparent) {
+            val lagWidth = skew + (width - skew) * laggingProgress
+            val lagPath = androidx.compose.ui.graphics.Path().apply {
+                moveTo(skew, 0f)
+                lineTo(lagWidth, 0f)
+                lineTo(lagWidth - skew, height)
+                lineTo(0f, height)
+                close()
+            }
+            drawPath(lagPath, color = laggingColor)
+        }
+        
+        // Main progress path
+        if (progress > 0f) {
+            val progWidth = skew + (width - skew) * progress
+            val progPath = androidx.compose.ui.graphics.Path().apply {
+                moveTo(skew, 0f)
+                lineTo(progWidth, 0f)
+                lineTo(progWidth - skew, height)
+                lineTo(0f, height)
+                close()
+            }
+            drawPath(progPath, brush = color)
+        }
+    }
+}
+
+@Composable
+fun GameplayActionButton(
+    icon: String,
+    onClick: () -> Unit,
+    sizeDp: Dp,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.88f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+        label = "btnScale"
+    )
+    
+    val glowColor = if (isPressed) Color(0xFFD41414) else Color.White.copy(alpha = 0.6f)
+    val buttonBg = if (isPressed) {
+        Brush.radialGradient(listOf(Color(0xFF6B0A0A), Color(0xFF1E0505)))
+    } else {
+        Brush.radialGradient(listOf(Color(0x44FFFFFF), Color(0x1AFFFFFF)))
+    }
+
+    Box(
+        modifier = modifier
+            .scale(scale)
+            .size(sizeDp)
+            .background(buttonBg, RoundedCornerShape(sizeDp / 2))
+            .border(2.dp, glowColor, RoundedCornerShape(sizeDp / 2))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null, // Disable default ripple to use our custom scale/glow feedback
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = icon,
+            fontSize = if (sizeDp > 50.dp) 26.sp else 18.sp,
+            modifier = Modifier.alpha(if (isPressed) 1.0f else 0.85f)
+        )
+    }
+}
+
+@Composable
 fun GameplayHUD(
     playerHealth: Float,
     playerSwordEnergy: Float,
@@ -929,105 +1116,188 @@ fun GameplayHUD(
     onJump: () -> Unit,
     onBlock: () -> Unit
 ) {
+    var animatedHealth by remember { mutableStateOf(playerHealth) }
+    LaunchedEffect(playerHealth) {
+        delay(300) // Small delay before lagging health catches up
+        animate(
+            initialValue = animatedHealth,
+            targetValue = playerHealth,
+            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+        ) { value, _ ->
+            animatedHealth = value
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         // 1. Top-Left Player Profile HUD
-        Row(
+        Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar (Jack's eyes crop)
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .border(2.dp, Color(0xFFD41414), RoundedCornerShape(28.dp))
-                    .background(Color.Black, RoundedCornerShape(28.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.black_eyes),
-                    contentDescription = "Avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(52.dp)
-                        .graphicsLayer {
-                            clip = true
-                            shape = RoundedCornerShape(26.dp)
-                        }
+                .padding(8.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.7f), Color(0xFF1E0505).copy(alpha = 0.8f))
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Column {
-                // Health Bar (HP label)
+                .border(1.5.dp, Color(0xFFD41414).copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Avatar (Jack's eyes crop)
+                val healthPercentage = playerHealth / 100f
+                val avatarRingColor = when {
+                    healthPercentage > 0.5f -> Color(0xFF4CAF50) // Green
+                    healthPercentage > 0.25f -> Color(0xFFFF9800) // Orange
+                    else -> Color(0xFFF44336) // Red
+                }
+                
                 Box(
                     modifier = Modifier
-                        .size(160.dp, 20.dp)
-                        .background(Color(0xFF201010), RoundedCornerShape(4.dp))
-                        .border(1.5.dp, Color.DarkGray, RoundedCornerShape(4.dp))
+                        .size(54.dp)
+                        .border(2.dp, avatarRingColor, RoundedCornerShape(27.dp))
+                        .background(Color.Black, RoundedCornerShape(27.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.black_eyes),
+                        contentDescription = "Avatar",
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth((playerHealth / 100f).coerceIn(0f, 1f))
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFF901010), Color(0xFFD41414))
-                                ),
-                                RoundedCornerShape(4.dp)
-                            )
-                    )
-                    Text(
-                        text = "${playerHealth.toInt()} / 100",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.align(Alignment.Center)
+                            .size(50.dp)
+                            .graphicsLayer {
+                                clip = true
+                                shape = RoundedCornerShape(25.dp)
+                            }
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                // Stats: Coins & Crystals
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Row(
-                        modifier = Modifier
-                            .background(Color(0xBB000000), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("🪙", fontSize = 11.sp)
-                        Spacer(modifier = Modifier.width(4.dp))
+                Column {
+                    // Health Bar (HP label)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "$playerCoins",
-                            color = Color(0xFFFFCC00),
+                            text = "HP",
+                            color = Color(0xFFE57373),
                             fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.width(22.dp)
+                        )
+                        SlantedProgressBar(
+                            progress = (playerHealth / 100f).coerceIn(0f, 1f),
+                            laggingProgress = (animatedHealth / 100f).coerceIn(0f, 1f),
+                            color = Brush.horizontalGradient(listOf(Color(0xFFB71C1C), Color(0xFFE53935))),
+                            laggingColor = Color(0xFFFFCDD2).copy(alpha = 0.6f),
+                            backgroundColor = Color(0xFF2E0C0C),
+                            modifier = Modifier
+                                .size(170.dp, 13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${playerHealth.toInt()}",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Sword Energy
+                    val isEnergyFull = playerSwordEnergy >= 100f
+                    val infiniteTransition = rememberInfiniteTransition(label = "energyPulse")
+                    val pulseAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.6f,
+                        targetValue = 1.0f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(600, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "alpha"
+                    )
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "NRG",
+                            color = if (isEnergyFull) Color(0xFFFFD54F) else Color(0xFF4DD0E1),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.width(22.dp)
+                        )
+                        
+                        val energyBrush = if (isEnergyFull) {
+                            Brush.horizontalGradient(listOf(Color(0xFFFF8F00), Color(0xFFFFC107)))
+                        } else {
+                            Brush.horizontalGradient(listOf(Color(0xFF00838F), Color(0xFF00E5FF)))
+                        }
+                        
+                        SlantedProgressBar(
+                            progress = (playerSwordEnergy / 100f).coerceIn(0f, 1f),
+                            color = energyBrush,
+                            backgroundColor = Color(0xFF0A222B),
+                            modifier = Modifier
+                                .size(170.dp, 8.dp)
+                                .graphicsLayer {
+                                    if (isEnergyFull) {
+                                        alpha = pulseAlpha
+                                    }
+                                }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isEnergyFull) "MAX!" else "${playerSwordEnergy.toInt()}%",
+                            color = if (isEnergyFull) Color(0xFFFFD54F) else Color(0xFF80DEEA),
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier
-                            .background(Color(0xBB000000), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("💎", fontSize = 11.sp)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "$playerCrystals",
-                            color = Color(0xFF14C5D4),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    // Stats: Coins & Crystals
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .border(0.5.dp, Color(0xFFFFD700).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🪙", fontSize = 10.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "$playerCoins",
+                                color = Color(0xFFFFD700),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .border(0.5.dp, Color(0xFF00E5FF).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("💎", fontSize = 10.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "$playerCrystals",
+                                color = Color(0xFF00E5FF),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -1068,19 +1338,35 @@ fun GameplayHUD(
             }
         }
 
-        // 4. Virtual Joystick (Bottom-Left)
-        var joystickOffset by remember { mutableStateOf(Offset.Zero) }
-        val joystickRadius = 50.dp
+        // 4. Floating Virtual Joystick (Active anywhere on the left panel)
+        var joystickCenter by remember { mutableStateOf(Offset.Zero) }
+        var knobOffset by remember { mutableStateOf(Offset.Zero) }
+        var isJoystickPressed by remember { mutableStateOf(false) }
+        var containerSize by remember { mutableStateOf(IntSize.Zero) }
+        
         val density = LocalDensity.current
+        val joystickRadius = 50.dp
         val joystickRadiusPx = with(density) { joystickRadius.toPx() }
+        val joystickBaseSizePx = with(density) { 100.dp.toPx() }
+        
+        val defaultCenter = Offset(
+            x = with(density) { 100.dp.toPx() },
+            y = if (containerSize.height > 0) {
+                containerSize.height - with(density) { 100.dp.toPx() }
+            } else {
+                0f
+            }
+        )
+        val activeCenter = if (isJoystickPressed) joystickCenter else defaultCenter
 
         Box(
             modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.48f)
                 .align(Alignment.BottomStart)
-                .padding(bottom = 32.dp, start = 32.dp)
-                .size(100.dp)
-                .background(Color(0x33FFFFFF), RoundedCornerShape(50.dp))
-                .border(2.dp, Color(0x66FFFFFF), RoundedCornerShape(50.dp))
+                .onGloballyPositioned { coordinates ->
+                    containerSize = coordinates.size
+                }
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
@@ -1088,54 +1374,93 @@ fun GameplayHUD(
                             val firstChange = down.changes.firstOrNull() ?: continue
                             if (firstChange.pressed) {
                                 firstChange.consume()
-                                
-                                val centerX = size.width / 2f
-                                val centerY = size.height / 2f
-                                
-                                val updateJoystick = { px: Float, py: Float ->
-                                    val dx = px - centerX
-                                    val dy = py - centerY
-                                    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                                    if (dist > joystickRadiusPx) {
-                                        joystickOffset = Offset(dx * joystickRadiusPx / dist, dy * joystickRadiusPx / dist)
-                                    } else {
-                                        joystickOffset = Offset(dx, dy)
-                                    }
-                                    onMove(joystickOffset.x / joystickRadiusPx, -joystickOffset.y / joystickRadiusPx)
-                                }
-                                
-                                updateJoystick(firstChange.position.x, firstChange.position.y)
+                                isJoystickPressed = true
+                                joystickCenter = firstChange.position
+                                knobOffset = Offset.Zero
                                 
                                 while (true) {
                                     val event = awaitPointerEvent()
                                     val pointerChange = event.changes.firstOrNull() ?: break
                                     if (pointerChange.pressed) {
                                         pointerChange.consume()
-                                        updateJoystick(pointerChange.position.x, pointerChange.position.y)
+                                        val dragOffset = pointerChange.position - joystickCenter
+                                        val dist = kotlin.math.sqrt(dragOffset.x * dragOffset.x + dragOffset.y * dragOffset.y)
+                                        if (dist > joystickRadiusPx) {
+                                            knobOffset = Offset(
+                                                dragOffset.x * joystickRadiusPx / dist,
+                                                dragOffset.y * joystickRadiusPx / dist
+                                            )
+                                        } else {
+                                            knobOffset = dragOffset
+                                        }
+                                        onMove(-knobOffset.x / joystickRadiusPx, -knobOffset.y / joystickRadiusPx)
                                     } else {
                                         break
                                     }
                                 }
-                                
-                                joystickOffset = Offset.Zero
+                                isJoystickPressed = false
+                                knobOffset = Offset.Zero
                                 onMove(0f, 0f)
                             }
                         }
                     }
-                },
-            contentAlignment = Alignment.Center
+                }
         ) {
-            // Knob
-            Box(
-                modifier = Modifier
-                    .offset(
-                        x = with(density) { joystickOffset.x.toDp() },
-                        y = with(density) { joystickOffset.y.toDp() }
+            // Draw joystick relative to activeCenter
+            if (activeCenter.y > 0) {
+                Box(
+                    modifier = Modifier
+                        .offset(
+                            x = with(density) { (activeCenter.x - joystickBaseSizePx / 2f).toDp() },
+                            y = with(density) { (activeCenter.y - joystickBaseSizePx / 2f).toDp() }
+                        )
+                        .size(100.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = if (isJoystickPressed) {
+                                    listOf(Color(0x33D41414), Color(0x11D41414))
+                                } else {
+                                    listOf(Color(0x22FFFFFF), Color(0x05FFFFFF))
+                                }
+                            ),
+                            shape = RoundedCornerShape(50.dp)
+                        )
+                        .border(
+                            width = 2.dp,
+                            color = if (isJoystickPressed) Color(0xCCD41414) else Color(0x44FFFFFF),
+                            shape = RoundedCornerShape(50.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isJoystickPressed) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Text("▲", color = Color(0x33D41414), fontSize = 10.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 4.dp))
+                            Text("▼", color = Color(0x33D41414), fontSize = 10.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp))
+                            Text("◀", color = Color(0x33D41414), fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp))
+                            Text("▶", color = Color(0x33D41414), fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp))
+                        }
+                    }
+                    
+                    // Knob
+                    Box(
+                        modifier = Modifier
+                            .offset(
+                                x = with(density) { knobOffset.x.toDp() },
+                                y = with(density) { knobOffset.y.toDp() }
+                            )
+                            .size(46.dp)
+                            .background(
+                                color = if (isJoystickPressed) Color(0xCC1E0505) else Color(0x99FFFFFF),
+                                shape = RoundedCornerShape(23.dp)
+                            )
+                            .border(
+                                width = 2.5.dp,
+                                color = if (isJoystickPressed) Color(0xFFD41414) else Color.White,
+                                shape = RoundedCornerShape(23.dp)
+                            )
                     )
-                    .size(44.dp)
-                    .background(Color(0xBBFFFFFF), RoundedCornerShape(22.dp))
-                    .border(2.5.dp, Color.White, RoundedCornerShape(22.dp))
-            )
+                }
+            }
         }
 
         // 5. Action Button Cluster (Bottom-Right)
@@ -1147,46 +1472,30 @@ fun GameplayHUD(
             contentAlignment = Alignment.Center
         ) {
             // Large Sword Attack (Bottom-Right)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(72.dp)
-                    .background(Color(0x44FFFFFF), RoundedCornerShape(36.dp))
-                    .border(2.dp, Color.White, RoundedCornerShape(36.dp))
-                    .clickable { onMeleeAttack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🗡️", fontSize = 28.sp)
-            }
+            GameplayActionButton(
+                icon = "🗡️",
+                onClick = onMeleeAttack,
+                sizeDp = 72.dp,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
 
             // Jump Button (Top-Right)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(end = 12.dp)
-                    .size(48.dp)
-                    .background(Color(0x33FFFFFF), RoundedCornerShape(24.dp))
-                    .border(1.5.dp, Color.LightGray, RoundedCornerShape(24.dp))
-                    .clickable { onJump() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("⬆️", fontSize = 20.sp)
-            }
+            GameplayActionButton(
+                icon = "⬆️",
+                onClick = onJump,
+                sizeDp = 48.dp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(end = 12.dp)
+            )
 
             // Defense / Block Button (Bottom-Left)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(bottom = 12.dp)
-                    .size(48.dp)
-                    .background(Color(0x33FFFFFF), RoundedCornerShape(24.dp))
-                    .border(1.5.dp, Color.LightGray, RoundedCornerShape(24.dp))
-                    .clickable { onBlock() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🛡️", fontSize = 20.sp)
-            }
+            GameplayActionButton(
+                icon = "🛡️",
+                onClick = onBlock,
+                sizeDp = 48.dp,
+                modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp)
+            )
         }
+
 
         // Help Instructions Overlay
         Text(

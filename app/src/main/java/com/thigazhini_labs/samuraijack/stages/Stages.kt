@@ -3,6 +3,7 @@ package com.thigazhini_labs.samuraijack.stages
 data class StageConfig(
     val stageNumber: Int,
     val title: String,
+    val subtitle: String,
     val objective: String,
     val bgColor: FloatArray,      // R, G, B for GLES30.glClearColor
     val fogColor: FloatArray,     // R, G, B
@@ -18,6 +19,7 @@ object Stages {
         StageConfig(
             stageNumber = 1,
             title = "Frosthollow Mine",
+            subtitle = "The Frozen Tomb",
             objective = "Cross the cold abandoned mine deep in the northern mountains.",
             bgColor = floatArrayOf(0.05f, 0.08f, 0.15f),
             fogColor = floatArrayOf(0.4f, 0.5f, 0.65f),
@@ -34,6 +36,7 @@ object Stages {
         StageConfig(
             stageNumber = 2,
             title = "The Young Prince",
+            subtitle = "First Training",
             objective = "Complete training missions and learn combat mechanics.",
             bgColor = floatArrayOf(0.1f, 0.15f, 0.12f),
             fogColor = floatArrayOf(0.18f, 0.28f, 0.22f),
@@ -50,6 +53,7 @@ object Stages {
         StageConfig(
             stageNumber = 3,
             title = "Journey Across the World",
+            subtitle = "Across the Seas",
             objective = "Master different fighting styles and abilities.",
             bgColor = floatArrayOf(0.2f, 0.18f, 0.15f),
             fogColor = floatArrayOf(0.45f, 0.35f, 0.25f),
@@ -66,6 +70,7 @@ object Stages {
         StageConfig(
             stageNumber = 4,
             title = "The Sacred Sword",
+            subtitle = "Summit of Light",
             objective = "Obtain the legendary sword and unlock special attacks.",
             bgColor = floatArrayOf(0.15f, 0.18f, 0.22f),
             fogColor = floatArrayOf(0.5f, 0.6f, 0.75f),
@@ -82,6 +87,7 @@ object Stages {
         StageConfig(
             stageNumber = 5,
             title = "Battle Against Evil",
+            subtitle = "Face of Darkness",
             objective = "Fight the first major boss and attempt to stop the darkness.",
             bgColor = floatArrayOf(0.22f, 0.08f, 0.05f),
             fogColor = floatArrayOf(0.55f, 0.15f, 0.08f),
@@ -98,6 +104,7 @@ object Stages {
         StageConfig(
             stageNumber = 6,
             title = "Exiled Through Time",
+            subtitle = "A Future Unveiled",
             objective = "Survive the time portal and arrive in the future.",
             bgColor = floatArrayOf(0.08f, 0.05f, 0.15f),
             fogColor = floatArrayOf(0.25f, 0.12f, 0.45f),
@@ -114,6 +121,7 @@ object Stages {
         StageConfig(
             stageNumber = 7,
             title = "City of Machines",
+            subtitle = "Drones of Metropolis",
             objective = "Explore a futuristic city ruled by robotic armies.",
             bgColor = floatArrayOf(0.05f, 0.08f, 0.08f),
             fogColor = floatArrayOf(0.08f, 0.22f, 0.12f),
@@ -130,6 +138,7 @@ object Stages {
         StageConfig(
             stageNumber = 8,
             title = "The Dog Archer Village",
+            subtitle = "The Great Siege",
             objective = "Defend the village from invading enemies.",
             bgColor = floatArrayOf(0.05f, 0.05f, 0.08f),
             fogColor = floatArrayOf(0.12f, 0.12f, 0.22f),
@@ -146,6 +155,7 @@ object Stages {
         StageConfig(
             stageNumber = 9,
             title = "The Warrior from the Highlands",
+            subtitle = "Rivalry of Iron",
             objective = "Meet a rival warrior and prove your strength.",
             bgColor = floatArrayOf(0.1f, 0.1f, 0.12f),
             fogColor = floatArrayOf(0.25f, 0.25f, 0.3f),
@@ -162,6 +172,7 @@ object Stages {
         StageConfig(
             stageNumber = 10,
             title = "Escape from the Fortress",
+            subtitle = "Fortress Breakout",
             objective = "Work together to break out of an enemy stronghold.",
             bgColor = floatArrayOf(0.08f, 0.08f, 0.1f),
             fogColor = floatArrayOf(0.15f, 0.18f, 0.25f),
@@ -178,6 +189,7 @@ object Stages {
         StageConfig(
             stageNumber = 11,
             title = "The Three-Eyed Beast",
+            subtitle = "Toxic Dunes",
             objective = "Hunt and defeat a powerful monster in the wastelands.",
             bgColor = floatArrayOf(0.12f, 0.08f, 0.12f),
             fogColor = floatArrayOf(0.35f, 0.15f, 0.35f),
@@ -194,6 +206,7 @@ object Stages {
         StageConfig(
             stageNumber = 12,
             title = "The Lava Guardian",
+            subtitle = "The Lava Core",
             objective = "Cross volcanic lands and defeat the Lava Guardian.",
             bgColor = floatArrayOf(0.2f, 0.05f, 0.02f),
             fogColor = floatArrayOf(0.55f, 0.12f, 0.05f),
@@ -210,6 +223,7 @@ object Stages {
         StageConfig(
             stageNumber = 13,
             title = "Path of the Ronin",
+            subtitle = "Final Duel",
             objective = "Face an elite enemy and continue the journey toward the final confrontation.",
             bgColor = floatArrayOf(0.18f, 0.08f, 0.12f),
             fogColor = floatArrayOf(0.48f, 0.18f, 0.22f),
@@ -225,3 +239,4 @@ object Stages {
         )
     )
 }
+

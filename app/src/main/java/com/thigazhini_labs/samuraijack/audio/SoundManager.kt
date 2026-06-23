@@ -39,7 +39,7 @@ object SoundManager {
         try {
             mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.soundtrack).apply {
                 isLooping = true
-                setVolume(0.2f, 0.2f)
+                setVolume(0.8f, 0.8f) // Increased volume for emulator audibility
                 start()
             }
         } catch (e: Exception) {
@@ -53,14 +53,36 @@ object SoundManager {
                 AudioFormat.ENCODING_PCM_16BIT
             )
             
-            audioTrack = AudioTrack(
-                AudioManager.STREAM_MUSIC,
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                minBufSize.coerceAtLeast(4096),
-                AudioTrack.MODE_STREAM
-            )
+            // Build AudioTrack using modern Builder on API 23+ for emulator compatibility
+            audioTrack = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                AudioTrack.Builder()
+                    .setAudioAttributes(
+                        android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_GAME)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(SAMPLE_RATE)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(minBufSize.coerceAtLeast(4096))
+                    .setTransferMode(AudioTrack.MODE_STREAM)
+                    .build()
+            } else {
+                @Suppress("DEPRECATION")
+                AudioTrack(
+                    AudioManager.STREAM_MUSIC,
+                    SAMPLE_RATE,
+                    AudioFormat.CHANNEL_OUT_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    minBufSize.coerceAtLeast(4096),
+                    AudioTrack.MODE_STREAM
+                )
+            }
             
             audioTrack?.play()
         } catch (e: Exception) {
@@ -139,7 +161,7 @@ object SoundManager {
         try {
             mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.soundtrack).apply {
                 isLooping = true
-                setVolume(0.2f, 0.2f)
+                setVolume(0.8f, 0.8f) // Increased volume for emulator audibility
                 start()
             }
         } catch (e: Exception) {

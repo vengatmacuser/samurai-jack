@@ -116,6 +116,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
     private var pointLightIntensityLink = 0
     private var silhouetteModeLink = 0
     private var hitFlashRedLink = 0
+    private var animTimeLink = 0
 
     // Matrices
     private val projectionMatrix = FloatArray(16)
@@ -126,6 +127,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
     // Camera stats
     var cameraPos = Vector3(0f, 2.2f, -5f)
     var cameraTarget = Vector3(0f, 0.6f, 0f)
+    var animTime = 0f
 
     // Threat level parameters
     var hitFlashAmount = 0.0f
@@ -163,6 +165,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
             pointLightIntensityLink = GLES30.glGetUniformLocation(programHandle, "uPointLightIntensity")
             silhouetteModeLink = GLES30.glGetUniformLocation(programHandle, "uSilhouetteMode")
             hitFlashRedLink = GLES30.glGetUniformLocation(programHandle, "uHitFlashRed")
+            animTimeLink = GLES30.glGetUniformLocation(programHandle, "uAnimTime")
         }
     }
 
@@ -209,6 +212,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
 
         // Red Hit flash uniform
         GLES30.glUniform1f(hitFlashRedLink, hitFlashAmount)
+        GLES30.glUniform1f(animTimeLink, animTime)
 
         // 4. Render Meshes
         synchronized(renderMeshes) {

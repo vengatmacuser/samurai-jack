@@ -88,7 +88,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var bossMesh: Mesh? = null
 
     // Controls
+    private var targetJoystickMoveVec = Vector3(0f, 0f, 0f)
     private var joystickMoveVec = Vector3(0f, 0f, 0f)
+    private var animTime = 0f
 
     // Gameplay parameters
     private var jackPos = Vector3(0f, 0f, 0f)
@@ -99,11 +101,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var hitFlashTimer = 0f
     private var specialFlashActive = false
     private var specialFlashTime = 0f
+    private var bossHitsRemaining = 5
 
     // Touch gesture tracking variables
     private var touchStartX = 0f
     private var touchStartY = 0f
     private var touchStartTime = 0L
+    private var touchStartedInMaskedZone = false
     private val swipeThreshold = 80f
     private val tapThresholdTime = 220L
 
@@ -202,7 +206,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                         SoundManager.playMusic(this@MainActivity)
                     },
                     onAdvanceText = { advanceDialogue() },
-                    onMove = { dx, dz -> joystickMoveVec = Vector3(dx, 0f, dz) },
+                    onMove = { dx, dz -> targetJoystickMoveVec = Vector3(dx, 0f, dz) },
                     onMeleeAttack = { triggerAttack() },
                     onJump = { triggerJump() },
                     onBlock = { triggerBlock() }
@@ -276,7 +280,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    // Touch gesture parser mapping gestures directly to actions
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (gameState == GameState.GAMEPLAY) return super.onTouchEvent(event)
 
@@ -335,30 +338,85 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         return true
     }
 
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (gameState == GameState.GAMEPLAY) {
+            val metrics = resources.displayMetrics
+            val screenWidth = metrics.widthPixels.toFloat()
+            val screenHeight = metrics.heightPixels.toFloat()
+
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchStartX = event.x
+                    touchStartY = event.y
+                    touchStartTime = System.currentTimeMillis()
+
+                    // Masking check: ignore swipes starting in virtual control quadrants
+                    val inJoystickZone = event.x < screenWidth * 0.32f && event.y > screenHeight * 0.50f
+                    val inButtonsZone = event.x > screenWidth * 0.68f && event.y > screenHeight * 0.50f
+                    touchStartedInMaskedZone = inJoystickZone || inButtonsZone
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!touchStartedInMaskedZone) {
+                        val diffX = event.x - touchStartX
+                        val diffY = event.y - touchStartY
+                        val duration = System.currentTimeMillis() - touchStartTime
+
+                        if (duration < 500L) {
+                            if (abs(diffX) > abs(diffY)) {
+                                // Horizontal swipe
+                                if (diffX > swipeThreshold) {
+                                    triggerDodge(1)
+                                } else if (diffX < -swipeThreshold) {
+                                    triggerDodge(-1)
+                                    refocusCameraOnCharacter()
+                                }
+                            } else {
+                                // Vertical swipe
+                                if (diffY < -swipeThreshold) {
+                                    triggerJump()
+                                } else if (diffY > swipeThreshold) {
+                                    triggerBlock()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
     private fun buildMainMenuScene() {
-        val list = mutableListOf<Mesh>()
-        // Torii gate at the center
-        val torii = Models3D.createToriiGate()
-        torii.position = Vector3(0f, 0f, 2f)
-        torii.scale = Vector3(0.8f, 0.8f, 0.8f)
-        list.add(torii)
+        mainScope.launch {
+            val list = withContext(Dispatchers.IO) {
+                val subList = mutableListOf<Mesh>()
+                // Torii gate at the center
+                val torii = Models3D.createToriiGate()
+                torii.position = Vector3(0f, 0f, 2f)
+                torii.scale = Vector3(0.8f, 0.8f, 0.8f)
+                subList.add(torii)
 
-        // Add ground
-        val ground = Models3D.createGround(20f, 20f, 0.2f, 0.15f, 0.15f)
-        ground.position = Vector3(0f, 0f, 0f)
-        list.add(ground)
+                // Add ground
+                val ground = Models3D.createGround(20f, 20f, 0.2f, 0.15f, 0.15f)
+                ground.position = Vector3(0f, 0f, 0f)
+                subList.add(ground)
 
-        // Static Jack
-        val jack = Models3D.loadObj(this, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
-        jack.position = Vector3(0f, 0.4f, 0f)
-        list.add(jack)
+                // Static Jack loaded on background thread
+                val jack = Models3D.loadObj(this@MainActivity, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
+                jack.position = Vector3(0f, 0.4f, 0f)
+                subList.add(jack)
+                subList
+            }
 
-        // Set camera
-        renderer.cameraPos = Vector3(0f, 1.8f, -4.5f)
-        renderer.cameraTarget = Vector3(0f, 0.6f, 0.5f)
+            // Set camera
+            renderer.cameraPos = Vector3(0f, 1.8f, -4.5f)
+            renderer.cameraTarget = Vector3(0f, 0.6f, 0.5f)
 
-        renderer.renderMeshes.clear()
-        renderer.renderMeshes.addAll(list)
+            synchronized(renderer.renderMeshes) {
+                renderer.renderMeshes.clear()
+                renderer.renderMeshes.addAll(list)
+            }
+        }
     }
 
     private fun startGame() {
@@ -378,7 +436,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
     }
 
-    private fun setupStageEntities(index: Int) {
+    private suspend fun setupStageEntities(index: Int) {
         val stage = Stages.stagesList[index]
         playerHealth = 100f
         playerSwordEnergy = 0f
@@ -392,48 +450,116 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         laserMeshes.clear()
         environmentMeshes.clear()
 
-        val list = mutableListOf<Mesh>()
+        val list = withContext(Dispatchers.IO) {
+            val subList = mutableListOf<Mesh>()
 
-        // 1. Create Ground (use custom 3D mesh for Stage 1 Frosthollow Mine)
-        val gc = stage.groundColor
-        if (index == 0) {
-            groundMesh = Models3D.loadObj(
-                context = this,
-                objFileName = "step_1_navigation_surface_frozen_mine.obj",
-                mtlFileName = null,
-                scaleMultiplier = 1.0f,
-                yOffset = 0.0f,
-                rotationOffsetY = 0f
-            )
+            // 1. Create Ground (use custom 3D mesh for Stage 1 Frosthollow Mine)
+            val gc = stage.groundColor
+            val gMesh = if (index == 0) {
+                Models3D.loadObj(
+                    context = this@MainActivity,
+                    objFileName = "step_1_navigation_surface_frozen_mine.obj",
+                    mtlFileName = null,
+                    scaleMultiplier = 1.0f,
+                    yOffset = 0.0f,
+                    rotationOffsetY = 0f
+                )
+            } else {
+                Models3D.createGround(12f, 80f, gc[0], gc[1], gc[2])
+            }
+            groundMesh = gMesh
+            subList.add(gMesh)
+
+            // 2. Create Jack
+            val normal = Models3D.loadObj(this@MainActivity, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
+            val attacking = Models3D.loadObj(this@MainActivity, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
+            jackMeshNormal = normal
+            jackMeshAttacking = attacking
+            jackMesh = normal
+            jackMesh.position = jackPos
+            subList.add(jackMesh)
+
+            // Textured 2D Sky Backdrop mapping stage image
+            val sky = Models3D.createTexturedSkyBackdrop()
+            sky.position = Vector3(0f, 0f, 0f)
+            sky.isVisible = true
+            skyMesh = sky
+            subList.add(sky)
+
+            // 3. Environment structures based on theme
+            if (stage.stageNumber in listOf(1, 2, 4, 13)) {
+                // Ancient Pagodas
+                val gate = Models3D.createToriiGate()
+                gate.position = Vector3(0f, 0f, 15f)
+                subList.add(gate)
+            }
+
+            // 4. Create enemies dynamically for all stages
+            val count = stage.enemyCount
+            val boss = stage.bossType
+            
+            if (boss != "None") {
+                // Spawn Boss Fight
+                val bMesh = if (boss == "Aku") {
+                    Models3D.createAku().apply {
+                        position = Vector3(0f, 0.4f, 15f)
+                        scale = Vector3(1.2f, 1.2f, 1.2f)
+                    }
+                } else {
+                    // For Lava Guardian, Shadow Ronin, Scotsman, Beast etc., use customized color/scale Samurai model
+                    Models3D.loadObj(
+                        context = this@MainActivity,
+                        objFileName = "samurai_model.obj",
+                        mtlFileName = "samurai_model.mtl",
+                        scaleMultiplier = if (boss == "Beast") 3.5f else 2.5f,
+                        yOffset = if (boss == "Beast") 1.0f else 0.8f,
+                        rotationOffsetY = 180f
+                    ).apply {
+                        position = Vector3(0f, 0.4f, 14f)
+                        silhouetteMode = when (boss) {
+                            "Ronin" -> 1 // Silhouette black-red
+                            "LavaGuardian" -> 2 // Glowing orange-red
+                            else -> 0
+                        }
+                    }
+                }
+                bossMesh = bMesh
+                subList.add(bMesh)
+            } else if (count > 0) {
+                // Spawn standard swarmer Beetle Drones spaced out along the path
+                for (i in 0 until count) {
+                    val enemyZ = if (index == 0) {
+                        22f + i * 18f
+                    } else {
+                        5f + i * 4.5f
+                    }
+                    val enemyX = if (index == 0) {
+                        getPathX(enemyZ)
+                    } else {
+                        if (i % 2 == 0) -1.2f else 1.2f
+                    }
+                    
+                    val enemy = Models3D.createRoboBeetle()
+                    enemy.position = Vector3(enemyX, 0.5f, enemyZ)
+                    enemy.isVisible = true
+                    
+                    enemyMeshes.add(enemy)
+                    subList.add(enemy)
+                }
+            }
+
+            subList
+        }
+
+        // Setup boss and enemy states on UI thread
+        if (stage.bossType != "None") {
+            bossHitsRemaining = 5
+            enemiesRemaining = 1
+        } else if (stage.enemyCount > 0) {
+            enemiesRemaining = stage.enemyCount
         } else {
-            groundMesh = Models3D.createGround(12f, 80f, gc[0], gc[1], gc[2])
+            enemiesRemaining = 1
         }
-        groundMesh?.let { list.add(it) }
-
-        // 2. Create Jack
-        jackMeshNormal = Models3D.loadObj(this, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
-        jackMeshAttacking = Models3D.loadObj(this, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
-        jackMesh = jackMeshNormal
-        jackMesh.position = jackPos
-        list.add(jackMesh)
-
-        // Textured 2D Sky Backdrop mapping stage image
-        skyMesh = Models3D.createTexturedSkyBackdrop()
-        skyMesh.position = Vector3(0f, 0f, 0f)
-        skyMesh.isVisible = true
-        list.add(skyMesh)
-
-        // 3. Environment structures based on theme
-        if (stage.stageNumber in listOf(1, 2, 4, 13)) {
-            // Ancient Pagodas
-            val gate = Models3D.createToriiGate()
-            gate.position = Vector3(0f, 0f, 15f)
-            list.add(gate)
-        }
-
-        // 4. Create enemies (DISABLED - EXPLORATION MODE)
-        bossMesh = null
-        enemiesRemaining = 1
 
         // Initialize camera position immediately to prevent starting frame jump
         if (index == 0) {
@@ -444,8 +570,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             renderer.cameraTarget = Vector3(-0.2f, 1.0f, 1.8f)
         }
 
-        renderer.renderMeshes.clear()
-        renderer.renderMeshes.addAll(list)
+        synchronized(renderer.renderMeshes) {
+            renderer.renderMeshes.clear()
+            renderer.renderMeshes.addAll(list)
+        }
     }
 
     private fun startCutscene(index: Int, isIntro: Boolean) {
@@ -523,8 +651,21 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         if (bossMesh != null) {
             bossMesh?.let { boss ->
                 val dist = jackPos.dist(boss.position)
-                if (dist < attackRange) {
-                    triggerHitResponse(boss)
+                if (dist < attackRange && boss.isVisible) {
+                    bossHitsRemaining--
+                    SoundManager.triggerHit()
+                    
+                    // Visual hit flash & point light feedback
+                    hitFlashTimer = 0.4f
+                    renderer.pointLightPos = boss.position
+                    renderer.pointLightColor = floatArrayOf(0.9f, 0.1f, 0.1f)
+                    renderer.pointLightIntensity = 3.0f
+
+                    if (bossHitsRemaining <= 0) {
+                        boss.isVisible = false
+                        playerSwordEnergy = (playerSwordEnergy + 40f).coerceAtMost(100f)
+                        enemiesRemaining = 0
+                    }
                 }
             }
         } else {
@@ -584,8 +725,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         // Screen shake + Clear all standard enemies
         if (bossMesh != null) {
-            // Halve boss health
+            bossHitsRemaining -= 2 // Heavy damage to boss
             playerHealth = (playerHealth + 30f).coerceAtMost(100f)
+            if (bossHitsRemaining <= 0) {
+                bossMesh?.isVisible = false
+                enemiesRemaining = 0
+            }
         } else {
             for (enemy in enemyMeshes) {
                 if (enemy.isVisible) {
@@ -614,6 +759,20 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     // Core Frame Physics Updates
     private fun updatePhysics() {
+        // Smoothly interpolate joystick vectors
+        joystickMoveVec.x += (targetJoystickMoveVec.x - joystickMoveVec.x) * 0.18f
+        joystickMoveVec.z += (targetJoystickMoveVec.z - joystickMoveVec.z) * 0.18f
+        if (abs(joystickMoveVec.x) < 0.01f && targetJoystickMoveVec.x == 0f) joystickMoveVec.x = 0f
+        if (abs(joystickMoveVec.z) < 0.01f && targetJoystickMoveVec.z == 0f) joystickMoveVec.z = 0f
+
+        // Update animation timer
+        if (jackState == "Run") {
+            animTime += 0.15f
+        } else {
+            animTime = 0f
+        }
+        renderer.animTime = animTime
+
         // 1. Gravity and Player position updates
         if (isJumping) {
             jackPos.y += jackVelY
@@ -745,17 +904,100 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         // Low health heartbeat triggers
         SoundManager.isLowHealthHeartbeatActive = playerHealth < 35f
 
-        // 4. Update Enemy Behaviors (DISABLED - EXPLORATION MODE)
+        // 4. Update Enemy Behaviors & Boss AI for all stages
+        if (gameState == GameState.GAMEPLAY) {
+            val currentTime = System.currentTimeMillis()
+            
+            // Update Boss AI
+            bossMesh?.let { boss ->
+                if (boss.isVisible) {
+                    // Face Jack
+                    val dx = jackPos.x - boss.position.x
+                    val dz = jackPos.z - boss.position.z
+                    val angleRad = kotlin.math.atan2(dx.toDouble(), dz.toDouble())
+                    boss.rotation.y = Math.toDegrees(angleRad).toFloat()
 
-        // 5. Update Projectiles (DISABLED - EXPLORATION MODE)
+                    // Boss attack patterns
+                    val bossAttackCooldown = 2200L
+                    if (currentTime % bossAttackCooldown < 25L) {
+                        val stage = Stages.stagesList.getOrNull(currentStageIndex)
+                        if (stage?.bossType == "Aku") {
+                            // Aku fires 3 spread lasers from the future
+                            fireEnemyLaser(Vector3(boss.position.x - 1f, boss.position.y + 1f, boss.position.z))
+                            fireEnemyLaser(Vector3(boss.position.x, boss.position.y + 1f, boss.position.z))
+                            fireEnemyLaser(Vector3(boss.position.x + 1f, boss.position.y + 1f, boss.position.z))
+                        } else {
+                            // Melee bosses strike Jack if in close proximity
+                            val dist = jackPos.dist(boss.position)
+                            if (dist < 3.2f) {
+                                damageJack()
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update swarm drone behaviors
+            for (enemy in enemyMeshes) {
+                if (enemy.isVisible) {
+                    // Hover effect
+                    enemy.position.y = 0.5f + kotlin.math.sin(currentTime * 0.005f).toFloat() * 0.15f
+                    
+                    // Face Jack
+                    val dx = jackPos.x - enemy.position.x
+                    val dz = jackPos.z - enemy.position.z
+                    val angleRad = kotlin.math.atan2(dx.toDouble(), dz.toDouble())
+                    enemy.rotation.y = Math.toDegrees(angleRad).toFloat()
+                    
+                    // Periodically fire laser towards Jack
+                    val enemyIndex = enemyMeshes.indexOf(enemy)
+                    val shootCooldown = 2500L
+                    val shootOffset = enemyIndex * 800L
+                    if ((currentTime + shootOffset) % shootCooldown < 25L) {
+                        fireEnemyLaser(enemy.position)
+                    }
+                }
+            }
+        }
+
+        // 5. Update Projectiles
+        synchronized(laserMeshes) {
+            val laserIterator = laserMeshes.iterator()
+            while (laserIterator.hasNext()) {
+                val laser = laserIterator.next()
+                if (laser.isVisible) {
+                    // Move laser along -Z axis
+                    laser.position.z -= 0.25f
+                    
+                    // Check collision with Jack
+                    val dist = laser.position.dist(jackPos)
+                    if (dist < 0.8f) {
+                        laser.isVisible = false
+                        synchronized(renderer.renderMeshes) {
+                            renderer.renderMeshes.remove(laser)
+                        }
+                        damageJack()
+                        laserIterator.remove()
+                    } else if (laser.position.z < jackPos.z - 10f) {
+                        // Out of bounds
+                        laser.isVisible = false
+                        synchronized(renderer.renderMeshes) {
+                            renderer.renderMeshes.remove(laser)
+                        }
+                        laserIterator.remove()
+                    }
+                } else {
+                    laserIterator.remove()
+                }
+            }
+        }
 
         // 6. Check Win conditions (EXPLORATION GATE EXIT TRIGGER)
         val winZ = if (currentStageIndex == 0) 75.0f else 14.2f
-        if (jackPos.z >= winZ && enemiesRemaining > 0) {
-            enemiesRemaining = 0
+        if (jackPos.z >= winZ && (enemiesRemaining == 0 || (enemyMeshes.isEmpty() && bossMesh == null && enemiesRemaining == 1))) {
+            enemiesRemaining = -1 // Stop duplicate triggers
             gameState = GameState.OUTRO_CUTSCENE
             startCutscene(currentStageIndex, false)
-            enemiesRemaining = -1 // Stop duplicate triggers
         }
 
         // Point light decay
@@ -901,5 +1143,31 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         val pushX = circleX + (dx / dist) * minDist
         val pushZ = circleZ + (dz / dist) * minDist
         return Vector3(pushX, 0.4f, pushZ)
+    }
+
+    private fun refocusCameraOnCharacter() {
+        // Reset tilt offset
+        sensorTiltX = 0f
+        smoothedCameraTiltOffset = 0f
+        
+        // Reset camera positions OTS behind Jack
+        val targetCamX = if (currentStageIndex == 0) {
+            val pathX = getPathX(jackPos.z - 5.5f)
+            pathX + (jackPos.x - getPathX(jackPos.z)) * 0.5f
+        } else {
+            jackPos.x + 0.9f
+        }
+        val targetCamY = jackPos.y + 1.4f
+        val targetCamZ = jackPos.z - 5.5f
+        renderer.cameraPos = Vector3(targetCamX, targetCamY, targetCamZ)
+        
+        val targetTargetX = if (currentStageIndex == 0) {
+            jackPos.x
+        } else {
+            jackPos.x - 0.2f
+        }
+        renderer.cameraTarget = Vector3(targetTargetX, jackPos.y + 0.6f, jackPos.z + 1.8f)
+        
+        SoundManager.triggerSpecialCharge()
     }
 }

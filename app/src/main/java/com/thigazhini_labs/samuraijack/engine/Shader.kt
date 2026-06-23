@@ -15,6 +15,7 @@ class Shader {
 
             uniform mat4 uMVPMatrix;
             uniform mat4 uModelMatrix;
+            uniform float uAnimTime;
 
             out vec3 fPosition;
             out vec3 fNormal;
@@ -22,8 +23,23 @@ class Shader {
             out vec2 fTexCoord;
 
             void main() {
-                gl_Position = uMVPMatrix * vec4(vPosition, 1.0);
-                fPosition = vec3(uModelMatrix * vec4(vPosition, 1.0));
+                vec3 pos = vPosition;
+                if (uAnimTime > 0.0) {
+                    // Simulate leg swing for vertices below waist in model space
+                    if (pos.y < 0.35) {
+                        float swing = sin(uAnimTime) * 0.18 * (0.35 - pos.y);
+                        if (pos.x > 0.0) {
+                            pos.z += swing;
+                        } else {
+                            pos.z -= swing;
+                        }
+                    }
+                    // Slight body bounce
+                    pos.y += abs(sin(uAnimTime)) * 0.04;
+                }
+
+                gl_Position = uMVPMatrix * vec4(pos, 1.0);
+                fPosition = vec3(uModelMatrix * vec4(pos, 1.0));
                 
                 // Normal transformed to world space (assuming uniform scaling)
                 fNormal = normalize(vec3(uModelMatrix * vec4(vNormal, 0.0)));
@@ -63,7 +79,12 @@ class Shader {
             void main() {
                 // 1. Silhouette / Texturing Logic
                 if (uSilhouetteMode == 3) {
-                    fragColor = texture(uTexture, fTexCoord);
+                    vec4 texColor = texture(uTexture, fTexCoord);
+                    // Apply exponential fog to the background textured backdrop
+                    float fragmentDist = distance(uCameraPos, fPosition);
+                    float fogFactor = exp(-uFogDensity * fragmentDist);
+                    fogFactor = clamp(fogFactor, 0.0, 1.0);
+                    fragColor = vec4(mix(uFogColor, texColor.rgb, fogFactor), texColor.a);
                     return;
                 }
 

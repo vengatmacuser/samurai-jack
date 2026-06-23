@@ -694,9 +694,20 @@ object Models3D {
 
                             // Check for embedded vertex color (v x y z r g b)
                             if (parts.size >= 6) {
-                                val r = parts[3].toFloatOrNull() ?: 1.0f
-                                val g = parts[4].toFloatOrNull() ?: 1.0f
-                                val b = parts[5].toFloatOrNull() ?: 1.0f
+                                var r = parts[3].toFloatOrNull() ?: 1.0f
+                                var g = parts[4].toFloatOrNull() ?: 1.0f
+                                var b = parts[5].toFloatOrNull() ?: 1.0f
+
+                                // Coal Mine pathing: Recolor tracks and ties to slate dark coal on Stage 1 floor
+                                if (objFileName.contains("frozen_mine") && y < -0.2f) {
+                                    val isWood = r in 0.3f..0.5f && g in 0.15f..0.35f && b in 0.1f..0.22f
+                                    val isRail = r in 0.5f..0.65f && g in 0.5f..0.65f && b in 0.5f..0.65f
+                                    if (isWood || isRail) {
+                                        r = 0.07f
+                                        g = 0.07f
+                                        b = 0.08f
+                                    }
+                                }
                                 rawColors.add(floatArrayOf(r, g, b, 1.0f))
                             } else {
                                 rawColors.add(floatArrayOf(-1.0f, -1.0f, -1.0f, -1.0f))
