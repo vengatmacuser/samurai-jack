@@ -124,6 +124,29 @@ object SoundManager {
         mediaPlayer = null
     }
 
+    fun stopMusic() {
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop/release MediaPlayer", e)
+        }
+        mediaPlayer = null
+    }
+
+    fun playMusic(context: Context) {
+        if (mediaPlayer != null) return
+        try {
+            mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.soundtrack).apply {
+                isLooping = true
+                setVolume(0.2f, 0.2f)
+                start()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to play background music", e)
+        }
+    }
+
     fun triggerSlash() {
         activeEffects["slash"] = 0
         effectEnvelopes["slash"] = 1.0f

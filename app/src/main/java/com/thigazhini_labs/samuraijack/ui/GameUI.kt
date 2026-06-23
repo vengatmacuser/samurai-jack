@@ -254,15 +254,13 @@ fun SplashScreen(onStart: () -> Unit) {
                 modifier = Modifier.scale(scale.value)
             ) {
                 Spacer(modifier = Modifier.height(130.dp))
-                Text(
-                    text = "E X I L E D",
-                    color = Color(0xFFD41414),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 16.sp,
-                    fontFamily = FontFamily.Serif,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 36.dp)
+                Image(
+                    painter = painterResource(id = R.drawable.main_logo),
+                    contentDescription = "Samurai Jack Logo",
+                    modifier = Modifier
+                        .width(360.dp)
+                        .height(110.dp)
+                        .padding(bottom = 36.dp)
                 )
                 
                 Box(

@@ -110,6 +110,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Enable immersive full-screen mode to cover the background image fully
+        window.decorView.systemUiVisibility = (android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+
         // Initialize GLSurfaceView
         glSurfaceView = GLSurfaceView(this).apply {
             setEGLContextClientVersion(3)
@@ -190,6 +198,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onBackToMenu = {
                         gameState = GameState.MAIN_MENU
                         SoundManager.currentStage = 1
+                        SoundManager.playMusic(this@MainActivity)
                     },
                     onAdvanceText = { advanceDialogue() },
                     onMove = { dx, dz -> joystickMoveVec = Vector3(dx, 0f, dz) },
@@ -225,6 +234,18 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         SoundManager.stop()
         stopGameLoop()
         sensorManager?.unregisterListener(this)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            window.decorView.systemUiVisibility = (android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        }
     }
 
     override fun onDestroy() {
@@ -346,6 +367,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private fun enterStage(index: Int) {
         currentStageIndex = index
         SoundManager.currentStage = index + 1
+        SoundManager.stopMusic() // Stop the background menu music during stage traversal
         gameState = GameState.TRAVEL_TRANSITION
 
         mainScope.launch {
@@ -617,14 +639,21 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 relX = (relX + joystickMoveVec.x * moveSpeed).coerceIn(-2.5f, 2.5f)
                 
                 // Move in Z
-                jackPos.z = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
+                val targetZ = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
+                val targetX = getPathX(targetZ) + relX
                 
-                // Update absolute X based on the new Z's path center
-                jackPos.x = getPathX(jackPos.z) + relX
+                // Run collision check on the proposed target position
+                val resolvedPos = checkCollision(targetX, targetZ, jackPos.x, jackPos.z)
+                jackPos.x = resolvedPos.x
+                jackPos.z = resolvedPos.z
             } else {
                 val limitX = floatArrayOf(-4.5f, 4.5f)
-                jackPos.x = (jackPos.x + joystickMoveVec.x * moveSpeed).coerceIn(limitX[0], limitX[1])
-                jackPos.z = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
+                val targetX = (jackPos.x + joystickMoveVec.x * moveSpeed).coerceIn(limitX[0], limitX[1])
+                val targetZ = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
+                
+                val resolvedPos = checkCollision(targetX, targetZ, jackPos.x, jackPos.z)
+                jackPos.x = resolvedPos.x
+                jackPos.z = resolvedPos.z
             }
 
             // Dynamic rotation Y so Jack faces actual 3D movement direction along winding curves
@@ -774,5 +803,102 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             return 2.2f * sin(z * 0.08f)
         }
         return 0f
+    }
+
+    private fun checkCollision(newX: Float, newZ: Float, oldX: Float, oldZ: Float): Vector3 {
+        // Check Torii gate collision (if it exists on this stage at Z = 15.0f)
+        val stage = com.thigazhini_labs.samuraijack.stages.Stages.stagesList.getOrNull(currentStageIndex)
+        if (stage != null && stage.stageNumber in listOf(1, 2, 4, 13)) {
+            if (kotlin.math.abs(newZ - 15.0f) < 1.5f) {
+                val playerRadius = 0.4f
+                // Left post
+                val lpX = -2.2f
+                val lpDist = kotlin.math.sqrt((newX - lpX) * (newX - lpX) + (newZ - 15.0f) * (newZ - 15.0f))
+                if (lpDist < (0.15f + playerRadius)) {
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, lpX, 15.0f, 0.15f + playerRadius)
+                }
+
+                // Right post
+                val rpX = 2.2f
+                val rpDist = kotlin.math.sqrt((newX - rpX) * (newX - rpX) + (newZ - 15.0f) * (newZ - 15.0f))
+                if (rpDist < (0.15f + playerRadius)) {
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, rpX, 15.0f, 0.15f + playerRadius)
+                }
+            }
+        }
+
+        if (currentStageIndex == 0) {
+            val playerRadius = 0.4f
+
+            // 1. Check support arches (every 6 units from -12 to 84)
+            for (zArch in -12..84 step 6) {
+                val zArchF = zArch.toFloat()
+                if (kotlin.math.abs(newZ - zArchF) > 1.5f) continue
+
+                val pathX = getPathX(zArchF)
+                // Left post
+                val lpX = pathX - 2.9f
+                val lpDist = kotlin.math.sqrt((newX - lpX) * (newX - lpX) + (newZ - zArchF) * (newZ - zArchF))
+                if (lpDist < (0.15f + playerRadius)) {
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, lpX, zArchF, 0.15f + playerRadius)
+                }
+
+                // Right post
+                val rpX = pathX + 2.9f
+                val rpDist = kotlin.math.sqrt((newX - rpX) * (newX - rpX) + (newZ - zArchF) * (newZ - zArchF))
+                if (rpDist < (0.15f + playerRadius)) {
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, rpX, zArchF, 0.15f + playerRadius)
+                }
+            }
+
+            // 2. Check Static Wooden Mine Cart (Z = 24.0f)
+            if (kotlin.math.abs(newZ - 24.0f) < 1.5f) {
+                val cartX = getPathX(24.0f) + 1.8f
+                // Cart extents: width=1.2 (X), depth=0.8 (Z)
+                val minX = cartX - 0.6f - playerRadius
+                val maxX = cartX + 0.6f + playerRadius
+                val minZ = 24.0f - 0.4f - playerRadius
+                val maxZ = 24.0f + 0.4f + playerRadius
+                if (newX in minX..maxX && newZ in minZ..maxZ) {
+                    return Vector3(oldX, 0.4f, oldZ)
+                }
+            }
+
+            // 3. Check Exit Gate Posts (Z = 75.0f)
+            if (kotlin.math.abs(newZ - 75.0f) < 1.5f) {
+                val pathX = getPathX(75.0f)
+                // Left post
+                val lpX = pathX - 2.8f
+                val lpDist = kotlin.math.sqrt((newX - lpX) * (newX - lpX) + (newZ - 75.0f) * (newZ - 75.0f))
+                if (lpDist < (0.15f + playerRadius)) {
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, lpX, 75.0f, 0.15f + playerRadius)
+                }
+
+                // Right post
+                val rpX = pathX + 2.8f
+                val rpDist = kotlin.math.sqrt((newX - rpX) * (newX - rpX) + (newZ - 75.0f) * (newZ - 75.0f))
+                if (rpDist < (0.15f + playerRadius)) {
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, rpX, 75.0f, 0.15f + playerRadius)
+                }
+            }
+        }
+        return Vector3(newX, 0.4f, newZ)
+    }
+
+    private fun resolveCircleCollision(
+        newX: Float, newZ: Float,
+        oldX: Float, oldZ: Float,
+        circleX: Float, circleZ: Float,
+        minDist: Float
+    ): Vector3 {
+        val dx = newX - circleX
+        val dz = newZ - circleZ
+        val dist = kotlin.math.sqrt(dx * dx + dz * dz)
+        if (dist < 0.001f) {
+            return Vector3(oldX, 0.4f, oldZ)
+        }
+        val pushX = circleX + (dx / dist) * minDist
+        val pushZ = circleZ + (dz / dist) * minDist
+        return Vector3(pushX, 0.4f, pushZ)
     }
 }
