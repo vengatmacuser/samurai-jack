@@ -412,6 +412,15 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         bossMesh = null
         enemiesRemaining = 1
 
+        // Initialize camera position immediately to prevent starting frame jump
+        if (index == 0) {
+            renderer.cameraPos = Vector3(0f, 1.8f, -5.5f)
+            renderer.cameraTarget = Vector3(0f, 1.0f, 1.8f)
+        } else {
+            renderer.cameraPos = Vector3(0.9f, 1.8f, -5.5f)
+            renderer.cameraTarget = Vector3(-0.2f, 1.0f, 1.8f)
+        }
+
         renderer.renderMeshes.clear()
         renderer.renderMeshes.addAll(list)
     }
@@ -593,19 +602,40 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             }
         }
 
+        val prevJackX = jackPos.x
+        val prevJackZ = jackPos.z
+
         // Apply joystick movement vectors
         if (joystickMoveVec.x != 0f || joystickMoveVec.z != 0f) {
             val moveSpeed = 0.06f
             val limitZ = if (currentStageIndex == 0) floatArrayOf(-15f, 85f) else floatArrayOf(-35f, 35f)
-            val limitX = if (currentStageIndex == 0) floatArrayOf(-6.0f, 6.0f) else floatArrayOf(-4.5f, 4.5f)
-            jackPos.x = (jackPos.x + joystickMoveVec.x * moveSpeed).coerceIn(limitX[0], limitX[1])
-            jackPos.z = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
+            
+            if (currentStageIndex == 0) {
+                // Winding mine path: movement is relative to the path center to prevent clipping
+                val currentPathX = getPathX(jackPos.z)
+                var relX = jackPos.x - currentPathX
+                relX = (relX + joystickMoveVec.x * moveSpeed).coerceIn(-2.5f, 2.5f)
+                
+                // Move in Z
+                jackPos.z = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
+                
+                // Update absolute X based on the new Z's path center
+                jackPos.x = getPathX(jackPos.z) + relX
+            } else {
+                val limitX = floatArrayOf(-4.5f, 4.5f)
+                jackPos.x = (jackPos.x + joystickMoveVec.x * moveSpeed).coerceIn(limitX[0], limitX[1])
+                jackPos.z = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
+            }
 
-            // Dynamic rotation Y so Jack faces movement direction
-            val angleRad = kotlin.math.atan2(joystickMoveVec.x.toDouble(), joystickMoveVec.z.toDouble())
-            val angleDeg = Math.toDegrees(angleRad).toFloat()
-            jackMeshNormal.rotation.y = angleDeg
-            jackMeshAttacking.rotation.y = angleDeg
+            // Dynamic rotation Y so Jack faces actual 3D movement direction along winding curves
+            val dx = jackPos.x - prevJackX
+            val dz = jackPos.z - prevJackZ
+            if (dx != 0f || dz != 0f) {
+                val angleRad = kotlin.math.atan2(dx.toDouble(), dz.toDouble())
+                val angleDeg = Math.toDegrees(angleRad).toFloat()
+                jackMeshNormal.rotation.y = angleDeg
+                jackMeshAttacking.rotation.y = angleDeg
+            }
 
             if (jackState == "Idle") {
                 jackState = "Run"
@@ -630,8 +660,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             if (specialFlashTime <= 0) {
                 specialFlashActive = false
             }
-            // Rapidly flicker camera target
-            renderer.cameraTarget.x = (sin(specialFlashTime * 50f) * 0.2f)
         }
 
         // 2. Synchronize Jack Mesh Position & Handle sheathed/unsheathed swaps
@@ -652,7 +680,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         skyMesh.position.z = jackPos.z
 
         // 3. Move Camera smoothly behind Jack (Third-Person OTS orbit)
-        val targetCamX = jackPos.x + 0.9f
+        val targetCamX = if (currentStageIndex == 0) {
+            // Keep camera centered on path at its Z position, blended with character's relative offset
+            val pathX = getPathX(jackPos.z - 5.5f)
+            pathX + (jackPos.x - getPathX(jackPos.z)) * 0.5f
+        } else {
+            jackPos.x + 0.9f
+        }
         val targetCamY = jackPos.y + 1.4f
         val targetCamZ = jackPos.z - 5.5f
         renderer.cameraPos.x += (targetCamX - renderer.cameraPos.x) * 0.1f
@@ -662,7 +696,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         // Apply device tilt/motion to shift camera focus (target looking direction) left/right
         val targetTiltOffset = (-sensorTiltX * 0.3f).coerceIn(-2.5f, 2.5f)
         smoothedCameraTiltOffset += (targetTiltOffset - smoothedCameraTiltOffset) * 0.1f
-        renderer.cameraTarget = Vector3(jackPos.x - 0.2f + smoothedCameraTiltOffset, jackPos.y + 0.6f, jackPos.z + 1.8f)
+        
+        val targetTargetX = if (currentStageIndex == 0) {
+            jackPos.x + smoothedCameraTiltOffset
+        } else {
+            jackPos.x - 0.2f + smoothedCameraTiltOffset
+        }
+        val flashOffset = if (specialFlashActive) (sin(specialFlashTime * 50f) * 0.2f) else 0f
+        renderer.cameraTarget = Vector3(targetTargetX + flashOffset, jackPos.y + 0.6f, jackPos.z + 1.8f)
 
         // Update current rendering stage details
         renderer.currentStageIndex = currentStageIndex
@@ -725,5 +766,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             gameState = GameState.GAME_OVER
             SoundManager.triggerExplosion()
         }
+    }
+
+    private fun getPathX(z: Float): Float {
+        if (currentStageIndex == 0) {
+            if (z < 0f) return 0f
+            return 2.2f * sin(z * 0.08f)
+        }
+        return 0f
     }
 }
