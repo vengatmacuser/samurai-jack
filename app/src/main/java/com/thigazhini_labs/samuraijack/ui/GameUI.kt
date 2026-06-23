@@ -254,14 +254,21 @@ fun SplashScreen(onStart: () -> Unit) {
                 modifier = Modifier.scale(scale.value)
             ) {
                 Spacer(modifier = Modifier.height(130.dp))
-                Image(
-                    painter = painterResource(id = R.drawable.main_logo),
-                    contentDescription = "Samurai Jack Logo",
+                Box(
                     modifier = Modifier
-                        .width(360.dp)
-                        .height(110.dp)
                         .padding(bottom = 36.dp)
-                )
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x55D41414)) // ~33% alpha red
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.main_logo),
+                        contentDescription = "Samurai Jack Logo",
+                        modifier = Modifier
+                            .width(320.dp)
+                            .height(100.dp)
+                    )
+                }
                 
                 Box(
                     modifier = Modifier
@@ -313,16 +320,22 @@ fun MainMenuScreen(onStart: () -> Unit, onSelectStage: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Attached Samurai Jack logo image added to the home page
-            Image(
-                painter = painterResource(id = R.drawable.main_logo),
-                contentDescription = "Samurai Jack Logo",
+            // Attached Samurai Jack logo image added to the home page inside a red transparent background container
+            Box(
                 modifier = Modifier
-                    .width(360.dp)
-                    .height(110.dp)
-                    .padding(horizontal = 24.dp)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0x55D41414)) // ~33% alpha red
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.main_logo),
+                    contentDescription = "Samurai Jack Logo",
+                    modifier = Modifier
+                        .width(320.dp)
+                        .height(100.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "EXILED IN TIME",
                 color = Color.LightGray,
