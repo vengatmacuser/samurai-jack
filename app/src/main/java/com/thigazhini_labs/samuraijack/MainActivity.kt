@@ -377,8 +377,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 context = this,
                 objFileName = "step_1_navigation_surface_frozen_mine.obj",
                 mtlFileName = null,
-                scaleMultiplier = 35.0f,
-                yOffset = -0.3f,
+                scaleMultiplier = 1.0f,
+                yOffset = 0.0f,
                 rotationOffsetY = 0f
             )
         } else {
