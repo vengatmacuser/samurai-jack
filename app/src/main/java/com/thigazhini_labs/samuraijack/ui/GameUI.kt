@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -251,38 +252,94 @@ fun SplashScreen(onStart: () -> Unit) {
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.scale(scale.value)
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scale(scale.value)
             ) {
-                Spacer(modifier = Modifier.height(130.dp))
+                // Unified premium glassmorphic card container
                 Box(
                     modifier = Modifier
-                        .padding(bottom = 36.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0x55D41414)) // ~33% alpha red
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .width(360.dp)
+                        .border(
+                            width = 1.5.dp,
+                            color = Color(0xFFD41414).copy(alpha = 0.8f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.75f),
+                                    Color(0xFF1E0505).copy(alpha = 0.85f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .padding(24.dp)
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.main_logo),
-                        contentDescription = "Samurai Jack Logo",
-                        modifier = Modifier
-                            .width(320.dp)
-                            .height(100.dp)
-                    )
-                }
-                
-                Box(
-                    modifier = Modifier
-                        .background(Color(0xFFD41414), RoundedCornerShape(4.dp))
-                        .clickable { onStart() }
-                        .padding(horizontal = 32.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "START ADVENTURE",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 3.sp
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Tint logo white for crisp contrast and premium look
+                        Image(
+                            painter = painterResource(id = R.drawable.main_logo),
+                            contentDescription = "Samurai Jack Logo",
+                            colorFilter = ColorFilter.tint(Color.White),
+                            modifier = Modifier
+                                .width(280.dp)
+                                .height(85.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        
+                        // Fading gradient divider
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.8f)
+                                .height(1.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color(0xFFD41414).copy(alpha = 0.8f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        
+                        // Start Adventure button (perfectly aligned with logo width inside card)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF8F0F0F),
+                                            Color(0xFFD41414),
+                                            Color(0xFF8F0F0F)
+                                        )
+                                    )
+                                )
+                                .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                                .clickable { onStart() }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "START ADVENTURE",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 3.sp
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -318,54 +375,104 @@ fun MainMenuScreen(onStart: () -> Unit, onSelectStage: () -> Unit) {
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Attached Samurai Jack logo image added to the home page inside a red transparent background container
+            // Unified premium glassmorphic card container for consistency
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0x55D41414)) // ~33% alpha red
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .width(360.dp)
+                    .border(
+                        width = 1.5.dp,
+                        color = Color(0xFFD41414).copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.75f),
+                                Color(0xFF1E0505).copy(alpha = 0.85f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(24.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.main_logo),
-                    contentDescription = "Samurai Jack Logo",
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(100.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "EXILED IN TIME",
-                color = Color.LightGray,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 10.sp,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Logo tinted White/Silver for consistency and contrast
+                    Image(
+                        painter = painterResource(id = R.drawable.main_logo),
+                        contentDescription = "Samurai Jack Logo",
+                        colorFilter = ColorFilter.tint(Color.White),
+                        modifier = Modifier
+                            .width(280.dp)
+                            .height(85.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    // Divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .height(1.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color(0xFFD41414).copy(alpha = 0.8f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
 
-            MenuButton("CONTINUE ADVENTURE", onStart)
-            Spacer(modifier = Modifier.height(16.dp))
-            MenuButton("CHRONICLES MAP", onSelectStage)
+                    MenuButton("CONTINUE ADVENTURE", onStart, isPrimary = true)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    MenuButton("CHRONICLES MAP", onSelectStage, isPrimary = false)
+                }
+            }
         }
     }
 }
 
 @Composable
-fun MenuButton(text: String, onClick: () -> Unit) {
+fun MenuButton(text: String, onClick: () -> Unit, isPrimary: Boolean = false) {
+    val backgroundBrush = if (isPrimary) {
+        Brush.horizontalGradient(
+            colors = listOf(Color(0xFF8F0F0F), Color(0xFFD41414), Color(0xFF8F0F0F))
+        )
+    } else {
+        Brush.horizontalGradient(
+            colors = listOf(Color(0xFF16161B), Color(0xFF1A1A24), Color(0xFF16161B))
+        )
+    }
+
+    val borderModifier = if (isPrimary) {
+        Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+    } else {
+        Modifier.border(1.dp, Color(0xFFD41414).copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+    }
+
     Box(
         modifier = Modifier
-            .width(260.dp)
-            .border(1.dp, Color.DarkGray, RoundedCornerShape(4.dp))
-            .background(Color(0xFF16161B), RoundedCornerShape(4.dp))
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(backgroundBrush)
+            .then(borderModifier)
             .clickable { onClick() }
             .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = Color.LightGray,
+            color = if (isPrimary) Color.White else Color.LightGray,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp
@@ -1039,9 +1146,9 @@ fun GameOverScreen(onRetry: () -> Unit, onMenu: () -> Unit) {
                 modifier = Modifier.padding(top = 8.dp, bottom = 48.dp)
             )
 
-            MenuButton("RETRY PORTAL", onRetry)
-            Spacer(modifier = Modifier.height(16.dp))
-            MenuButton("RETURN TO MAP", onMenu)
+            MenuButton("RETRY PORTAL", onRetry, isPrimary = true)
+            Spacer(modifier = Modifier.height(12.dp))
+            MenuButton("RETURN TO MAP", onMenu, isPrimary = false)
         }
     }
 }
@@ -1080,7 +1187,7 @@ fun GameCompleteScreen(onMenu: () -> Unit) {
                 modifier = Modifier.padding(top = 16.dp, bottom = 48.dp, start = 32.dp, end = 32.dp)
             )
 
-            MenuButton("RETURN TO MENU", onMenu)
+            MenuButton("RETURN TO MENU", onMenu, isPrimary = true)
         }
     }
 }
