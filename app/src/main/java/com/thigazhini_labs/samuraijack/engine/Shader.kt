@@ -53,7 +53,7 @@ class Shader {
             uniform float uPointLightIntensity;
 
             // Visual effects uniforms
-            uniform int uSilhouetteMode;    // 0 = Normal, 1 = Black silhouette (Jack), 2 = Glow eyes/blade, 3 = Textured background
+            uniform int uSilhouetteMode;    // 0 = Normal, 1 = Black silhouette (Jack), 2 = Glow eyes/blade, 3 = Textured background, 4 = Textured character
             uniform float uHitFlashRed;     // 0.0 = normal, 1.0 = full red flash (damage)
 
             uniform sampler2D uTexture;
@@ -77,6 +77,11 @@ class Shader {
                     return;
                 }
 
+                vec4 baseColor = fColor;
+                if (uSilhouetteMode == 4) {
+                    baseColor = texture(uTexture, fTexCoord);
+                }
+
                 vec3 normal = normalize(fNormal);
                 vec3 viewDir = normalize(uCameraPos - fPosition);
 
@@ -84,14 +89,14 @@ class Shader {
                 vec3 lightDir = normalize(-uDirLightDir);
                 float diff = dot(normal, lightDir);
                 
-                // Quantize diffuse lighting bands for Cartoon style
+                // Quantize diffuse lighting bands for Cartoon style (enhanced shadows)
                 float celDiffuse;
-                if (diff > 0.6) {
+                if (diff > 0.5) {
                     celDiffuse = 1.0;
-                } else if (diff > 0.1) {
-                    celDiffuse = 0.5;
+                } else if (diff > -0.1) {
+                    celDiffuse = 0.45;
                 } else {
-                    celDiffuse = 0.15; // Ambient contribution
+                    celDiffuse = 0.08; // Darker ambient contribution for stronger shadow contrast
                 }
 
                 // Directional light contribution
@@ -119,7 +124,7 @@ class Shader {
 
                 // Combine lights
                 vec3 finalLight = dirDiffuseColor + pointDiffuseColor;
-                vec4 litColor = vec4(fColor.rgb * finalLight, fColor.a);
+                vec4 litColor = vec4(baseColor.rgb * finalLight, baseColor.a);
 
                 // 4. Hit Flash Damage overlay
                 if (uHitFlashRed > 0.0) {

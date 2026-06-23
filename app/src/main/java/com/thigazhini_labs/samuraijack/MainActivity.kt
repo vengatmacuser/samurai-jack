@@ -326,7 +326,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         list.add(ground)
 
         // Static Jack
-        val jack = Models3D.createJack()
+        val jack = Models3D.loadObj(this, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
         jack.position = Vector3(0f, 0.4f, 0f)
         list.add(jack)
 
@@ -370,14 +370,25 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         val list = mutableListOf<Mesh>()
 
-        // 1. Create Ground
+        // 1. Create Ground (use custom 3D mesh for Stage 1 Frosthollow Mine)
         val gc = stage.groundColor
-        groundMesh = Models3D.createGround(12f, 80f, gc[0], gc[1], gc[2])
+        if (index == 0) {
+            groundMesh = Models3D.loadObj(
+                context = this,
+                objFileName = "step_1_navigation_surface_frozen_mine.obj",
+                mtlFileName = null,
+                scaleMultiplier = 35.0f,
+                yOffset = -0.3f,
+                rotationOffsetY = 0f
+            )
+        } else {
+            groundMesh = Models3D.createGround(12f, 80f, gc[0], gc[1], gc[2])
+        }
         groundMesh?.let { list.add(it) }
 
         // 2. Create Jack
-        jackMeshNormal = Models3D.createJack(isAttacking = false)
-        jackMeshAttacking = Models3D.createJack(isAttacking = true)
+        jackMeshNormal = Models3D.loadObj(this, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
+        jackMeshAttacking = Models3D.loadObj(this, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
         jackMesh = jackMeshNormal
         jackMesh.position = jackPos
         list.add(jackMesh)
@@ -631,7 +642,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             jackMesh = currentJackMesh
         }
         jackMesh.position = jackPos
-        jackMesh.silhouetteMode = if (specialFlashActive) 1 else 0
+        jackMesh.silhouetteMode = if (specialFlashActive) 1 else (if (jackMesh.textureName != null) 4 else 0)
 
         skyMesh.position.x = jackPos.x
         skyMesh.position.z = jackPos.z

@@ -13,3 +13,14 @@
 .kotlin
 .idea/
 *.apk
+
+# Large raw models in the project root
+/samurai+3d+model.mtl
+/samurai+3d+model.obj
+/samurai+3d+model_basecolor.jpg
+/samurai+3d+model_normal.jpg
+/samurai+3d+model_rm.jpg
+/samurai_simplified.obj
+/samurai_simplified.obj.mtl
+/step_1_navigation_surface_frozen_mine.obj
+

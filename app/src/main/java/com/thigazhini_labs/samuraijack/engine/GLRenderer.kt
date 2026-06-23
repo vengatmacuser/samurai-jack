@@ -53,6 +53,36 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
         return tex ?: 0
     }
 
+    private val assetTextureCache = mutableMapOf<String, Int>()
+
+    private fun loadAssetTexture(fileName: String): Int {
+        var tex = assetTextureCache[fileName]
+        if (tex != null && tex != 0) return tex
+
+        val textureIds = IntArray(1)
+        GLES30.glGenTextures(1, textureIds, 0)
+        if (textureIds[0] == 0) return 0
+
+        try {
+            context.assets.open(fileName).use { inputStream ->
+                val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                if (bitmap == null) return 0
+                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureIds[0])
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_REPEAT)
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_REPEAT)
+                android.opengl.GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0)
+                bitmap.recycle()
+                assetTextureCache[fileName] = textureIds[0]
+                return textureIds[0]
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading asset texture: $fileName", e)
+            return 0
+        }
+    }
+
     private fun getStageBackgroundResId(stageIndex: Int): Int {
         return when (stageIndex) {
             0 -> com.thigazhini_labs.samuraijack.R.drawable.bg_frosthollow
@@ -168,8 +198,8 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
         GLES30.glUniform3f(fogColorLink, stage.fogColor[0], stage.fogColor[1], stage.fogColor[2])
         GLES30.glUniform1f(fogDensityLink, stage.fogDensity)
 
-        // Directional Sunlight
-        GLES30.glUniform3f(dirLightDirLink, -0.5f, -1.0f, 0.5f)
+        // Directional Sunlight (Steeper angle for dramatic side-shadows)
+        GLES30.glUniform3f(dirLightDirLink, -1.2f, -0.8f, 0.4f)
         GLES30.glUniform3f(dirLightColorLink, 1.0f, 0.95f, 0.90f)
 
         // Point light (pulsing lasers / sword impact glow)
@@ -215,9 +245,14 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
                 GLES30.glUniform1i(silhouetteModeLink, mesh.silhouetteMode)
 
                 // Bind texture if in textured mode
-                if (mesh.silhouetteMode == 3 && mesh.texCoordBuffer != null) {
-                    val texResId = getStageBackgroundResId(currentStageIndex)
-                    val texId = getTexture(texResId)
+                val useTexture = (mesh.silhouetteMode == 3 || mesh.silhouetteMode == 4) && mesh.texCoordBuffer != null
+                if (useTexture) {
+                    val texId = if (mesh.silhouetteMode == 4 && mesh.textureName != null) {
+                        loadAssetTexture(mesh.textureName!!)
+                    } else {
+                        val texResId = getStageBackgroundResId(currentStageIndex)
+                        getTexture(texResId)
+                    }
                     GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
                     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texId)
                     val uTextureLoc = GLES30.glGetUniformLocation(programHandle, "uTexture")
@@ -256,7 +291,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
                 GLES30.glDisableVertexAttribArray(0)
                 GLES30.glDisableVertexAttribArray(1)
                 GLES30.glDisableVertexAttribArray(2)
-                if (mesh.silhouetteMode == 3) {
+                if (useTexture) {
                     GLES30.glDisableVertexAttribArray(3)
                     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0)
                 }
