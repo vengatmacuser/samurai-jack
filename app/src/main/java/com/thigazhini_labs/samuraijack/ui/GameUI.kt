@@ -170,24 +170,20 @@ fun SplashScreen(onStart: () -> Unit) {
     
     LaunchedEffect(Unit) {
         delay(1000)
-        animationStep = 1 // Show company presents
-        delay(1800)
-        animationStep = 2 // Show UE5 presents
-        delay(1800)
-        animationStep = 3 // Show Aku's eyes glowing
-        delay(2200)
-        animationStep = 4 // Slash flash logo title
+        animationStep = 1 // Show company presents (Powered by Thigazhini Labs)
+        delay(2000)
+        animationStep = 2 // Slash flash logo title
     }
 
     val backgroundAlpha by animateFloatAsState(
-        targetValue = if (animationStep >= 4) 1f else 0f,
+        targetValue = if (animationStep >= 2) 1f else 0f,
         animationSpec = tween(1500),
         label = "bgAlpha"
     )
 
     var flashAlpha by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(animationStep) {
-        if (animationStep == 4) {
+        if (animationStep == 2) {
             flashAlpha = 1.0f
             animate(
                 initialValue = 1.0f,
@@ -207,7 +203,7 @@ fun SplashScreen(onStart: () -> Unit) {
     ) {
         if (backgroundAlpha > 0f) {
             Image(
-                painter = painterResource(id = R.drawable.red_eyes),
+                painter = painterResource(id = R.drawable.main_background),
                 contentDescription = "Background",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -222,21 +218,8 @@ fun SplashScreen(onStart: () -> Unit) {
             )
         }
 
-        // Step 1: Company Presents
+        // Step 1: Powered by Thigazhini Labs
         if (animationStep == 1) {
-            Text(
-                text = "THIGAZHINI LABS PRESENTS",
-                color = Color.Gray,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Light,
-                letterSpacing = 4.sp,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier.alpha(0.8f)
-            )
-        }
-
-        // Step 2: Powered by Unreal Engine 5
-        if (animationStep == 2) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "POWERED BY",
@@ -249,7 +232,7 @@ fun SplashScreen(onStart: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "UNREAL ENGINE 5",
+                    text = "THIGAZHINI LABS",
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -259,31 +242,8 @@ fun SplashScreen(onStart: () -> Unit) {
             }
         }
 
-        // Step 3: Aku's Eyes fading in (Black Eyes)
-        if (animationStep == 3) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "IN THE SHADOWS OF EVIL...",
-                    color = Color(0xFF501010),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    fontFamily = FontFamily.SansSerif,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-                Image(
-                    painter = painterResource(id = R.drawable.black_eyes),
-                    contentDescription = "Black Eyes",
-                    modifier = Modifier
-                        .width(340.dp)
-                        .height(110.dp),
-                    contentScale = ContentScale.Fit
-                )
-            }
-        }
-
-        // Step 4: Main Slash and Logo
-        if (animationStep >= 4) {
+        // Step 2: Main Slash and Logo
+        if (animationStep >= 2) {
             val scale = remember { Animatable(0.4f) }
             LaunchedEffect(Unit) {
                 scale.animateTo(1.0f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessLow))
@@ -340,7 +300,7 @@ fun MainMenuScreen(onStart: () -> Unit, onSelectStage: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.red_eyes),
+            painter = painterResource(id = R.drawable.main_background),
             contentDescription = "Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
@@ -348,21 +308,30 @@ fun MainMenuScreen(onStart: () -> Unit, onSelectStage: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
+                .background(Color.Black.copy(alpha = 0.4f))
         )
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(110.dp))
+            // Attached Samurai Jack logo image added to the home page
+            Image(
+                painter = painterResource(id = R.drawable.main_logo),
+                contentDescription = "Samurai Jack Logo",
+                modifier = Modifier
+                    .width(360.dp)
+                    .height(110.dp)
+                    .padding(horizontal = 24.dp)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = "EXILED IN TIME",
                 color = Color.LightGray,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 10.sp,
-                modifier = Modifier.padding(bottom = 40.dp)
+                modifier = Modifier.padding(bottom = 24.dp)
             )
 
             MenuButton("CONTINUE ADVENTURE", onStart)
@@ -411,7 +380,7 @@ fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onB
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.red_eyes),
+            painter = painterResource(id = R.drawable.main_background),
             contentDescription = "Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
@@ -1033,7 +1002,7 @@ fun GameOverScreen(onRetry: () -> Unit, onMenu: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.red_eyes),
+            painter = painterResource(id = R.drawable.main_background),
             contentDescription = "Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
@@ -1073,7 +1042,7 @@ fun GameCompleteScreen(onMenu: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.red_eyes),
+            painter = painterResource(id = R.drawable.main_background),
             contentDescription = "Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()

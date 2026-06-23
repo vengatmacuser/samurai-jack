@@ -121,7 +121,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         setContent {
             val bgResId = when (gameState) {
-                GameState.SPLASH, GameState.MAIN_MENU, GameState.STAGE_SELECT -> R.drawable.red_eyes
+                GameState.SPLASH, GameState.MAIN_MENU, GameState.STAGE_SELECT -> R.drawable.main_background
                 else -> {
                     when (currentStageIndex) {
                         0 -> R.drawable.bg_frosthollow // Stage 1: Frosthollow Mine
