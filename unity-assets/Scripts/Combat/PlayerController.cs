@@ -67,12 +67,13 @@ namespace ChronoBlade.Combat
         private void Update()
         {
             CurrentState?.Update(this);
-            ApplyMovementPhysics();
+            // Removed ApplyMovementPhysics() from here to fix wall collision jitters
         }
 
         private void FixedUpdate()
         {
             CurrentState?.FixedUpdate(this);
+            ApplyMovementPhysics(); // Moved here so physics and movement sync correctly
         }
 
         public void TransitionToState(IPlayerState newState)

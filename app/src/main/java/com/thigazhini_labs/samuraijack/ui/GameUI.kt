@@ -47,7 +47,6 @@ import com.thigazhini_labs.samuraijack.R
 import com.thigazhini_labs.samuraijack.stages.Stages
 import kotlinx.coroutines.delay
 
-
 @Composable
 fun GameUI(
     gameState: GameState,
@@ -105,9 +104,12 @@ fun GameUI(
 
         // Gameplay combat overlays (Slash, flash, speed lines) based on jackState
         if (gameState == GameState.GAMEPLAY) {
-            if (currentStageIndex == 0 && !isStage1InsideMine) {
-                SnowfallOverlay()
+
+            if (currentStageIndex == 0) {
+                // Pass the boolean state directly to the overlay
+                StormOverlay(isInside = isStage1InsideMine) 
             }
+            
             if (jackState == "Attack") {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1435,7 +1437,44 @@ fun GameplayHUD(
             )
         }
 
-        // 3. Floating Virtual Joystick (Active anywhere on the left panel)
+        // 3. Map & Collapsible Jump Cluster (Top-Right)
+        var isMapExpanded by remember { mutableStateOf(false) }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp, end = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Map Icon (Always Visible)
+            GameplayActionButton(
+                icon = "🗺️",
+                onClick = { 
+                    isMapExpanded = !isMapExpanded 
+                },
+                sizeDp = 52.dp,
+                label = "MAP"
+            )
+            
+            // Jump Icon (Collapses in/out when Map is tapped)
+            AnimatedVisibility(
+                visible = isMapExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    GameplayActionButton(
+                        icon = "⬆",
+                        onClick = onJump,
+                        sizeDp = 48.dp,
+                        label = "JUMP"
+                    )
+                }
+            }
+        }
+
+        // 4. Floating Virtual Joystick (Active anywhere on the left panel)
         var joystickCenter by remember { mutableStateOf(Offset.Zero) }
         var knobOffset by remember { mutableStateOf(Offset.Zero) }
         var isJoystickPressed by remember { mutableStateOf(false) }
@@ -1560,7 +1599,7 @@ fun GameplayHUD(
             }
         }
 
-        // 4. Camera look joystick centered on right side with clear cardinal arrows
+        // 5. Camera look joystick centered on right side with clear cardinal arrows
         var lookCenter by remember { mutableStateOf(Offset.Zero) }
         var lookKnobOffset by remember { mutableStateOf(Offset.Zero) }
         var isLookPressed by remember { mutableStateOf(false) }
@@ -1664,7 +1703,7 @@ fun GameplayHUD(
             }
         }
 
-        // 5. Action Button Cluster (Bottom-Right)
+        // 6. Action Button Cluster (Bottom-Right) - Jump Removed[cite: 5]
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -1679,15 +1718,6 @@ fun GameplayHUD(
                 sizeDp = 72.dp,
                 label = "ATK",
                 modifier = Modifier.align(Alignment.BottomEnd)
-            )
-
-            // Jump Button (Top-Right)
-            GameplayActionButton(
-                icon = "⬆",
-                onClick = onJump,
-                sizeDp = 56.dp,
-                label = "JUMP",
-                modifier = Modifier.align(Alignment.TopEnd).padding(end = 10.dp, top = 2.dp)
             )
 
             // Defense / Block Button (Bottom-Left)
@@ -1715,39 +1745,62 @@ fun GameplayHUD(
 }
 
 @Composable
-fun SnowfallOverlay() {
-    val transition = rememberInfiniteTransition(label = "outsideSnow")
-    val fallT by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(5200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "snowFallT"
+fun StormOverlay(isInside: Boolean) {
+    val targetAlpha by animateFloatAsState(targetValue = if (isInside) 0f else 1f, animationSpec = tween(1000))
+    if (targetAlpha <= 0f) return
+
+    val transition = rememberInfiniteTransition(label = "storm")
+    val rainFallT by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(600, easing = LinearEasing)),
+        label = "rainFallT"
     )
 
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .alpha(0.8f)
-    ) {
-        val flakes = 120
-        for (i in 0 until flakes) {
-            val seed = i * 97f
-            val xBase = ((i * 73) % 1000) / 1000f
-            val wave = kotlin.math.sin((fallT * 6.28f) + seed * 0.01f) * 0.018f
-            val x = ((xBase + wave + 1f) % 1f) * size.width
-            val y = ((fallT + (i / flakes.toFloat())) % 1f) * size.height
-            val r = 1.1f + (i % 4) * 0.55f
-            drawCircle(
-                color = Color.White.copy(alpha = 0.35f + (i % 5) * 0.1f),
-                radius = r,
-                center = Offset(x, y)
+    Canvas(modifier = Modifier.fillMaxSize().alpha(targetAlpha)) {
+        val width = size.width
+        val height = size.height
+
+        // 1. Draw Rain Streaks
+        for (i in 0 until 150) {
+            val seed = i * 499L
+            val randDepth = ((seed * 17) % 1000) / 1000f
+            val randX = ((seed * 31) % 1000) / 1000f
+            val speed = 0.8f + (randDepth * 1.2f)
+            val yPos = ((rainFallT * speed) + (randX)) % 1f
+            val x = (randX * width)
+            val y = yPos * height
+            
+            drawLine(
+                color = Color(0xFFDEEFFF).copy(alpha = 0.2f + (randDepth * 0.3f)),
+                start = Offset(x, y),
+                end = Offset(x - 2f, y + 20f),
+                strokeWidth = 1.2f,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
             )
+        }
+
+        // 2. Realistic Ground Impact (Splashes)
+        // Only draw these near the bottom "ground" area
+        for (i in 0 until 40) {
+            val seed = i * 999L
+            val randX = ((seed * 7) % 1000) / 1000f
+            val splashX = randX * width
+            val splashY = height - 10f // Near the bottom of the screen
+            
+            // Randomly pulsate ripples
+            val rippleScale = (rainFallT * 5f) % 1f
+            if (rippleScale > 0.5f) {
+                drawCircle(
+                    color = Color(0xFFDEEFFF).copy(alpha = (1f - rippleScale) * 0.3f),
+                    radius = rippleScale * 15f,
+                    center = Offset(splashX, splashY),
+                    style = Stroke(width = 2f)
+                )
+            }
         }
     }
 }
+
 
 @Composable
 fun GameOverScreen(onRetry: () -> Unit, onMenu: () -> Unit) {
