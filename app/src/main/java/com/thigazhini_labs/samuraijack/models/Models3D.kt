@@ -49,6 +49,20 @@ class Mesh {
                 position(0)
             }
     }
+
+    fun createInstance(): Mesh {
+        val instance = Mesh()
+        instance.vertexBuffer = vertexBuffer
+        instance.normalBuffer = normalBuffer
+        instance.colorBuffer = colorBuffer
+        instance.indexBuffer = indexBuffer
+        instance.texCoordBuffer = texCoordBuffer
+        instance.indexCount = indexCount
+        instance.silhouetteMode = silhouetteMode
+        instance.textureName = textureName
+        instance.isHero = isHero
+        return instance
+    }
 }
 
 object Models3D {
@@ -572,7 +586,7 @@ object Models3D {
         mb.appendBox((railSpacing * 0.86f), 0.01f, 0f, 0.7f, 0.12f, length, 0.09f, 0.09f, 0.1f)
 
         // Realistic ballast mix: 70% small, 20% medium, 10% large
-        val chunkCount = (length * 11f).toInt().coerceAtLeast(88)
+        val chunkCount = (length * 7f).toInt().coerceAtLeast(56)
         val gravelColors = arrayOf(
             floatArrayOf(0.09f, 0.09f, 0.1f),
             floatArrayOf(0.12f, 0.12f, 0.13f),
@@ -752,6 +766,14 @@ object Models3D {
         }
         mb.appendBox(-halfW + 0.52f, 1.8f, depth * 0.18f, 0.02f, 1.2f, 1.3f, 0.02f, 0.02f, 0.03f)
         mb.appendBox(halfW - 0.5f, 2.2f, -depth * 0.12f, 0.02f, 1.0f, 1.1f, 0.02f, 0.02f, 0.03f)
+
+        // Curved tunnel profile overlays to break square silhouette.
+        for (i in 0 until 7) {
+            val zArc = -depth * 0.45f + i * (depth * 0.15f)
+            mb.appendSphere(-halfW + 1.1f, height - 0.95f, zArc, 0.95f, rock1[0], rock1[1], rock1[2], 1f, 9, 10)
+            mb.appendSphere(halfW - 1.1f, height - 0.95f, zArc, 0.95f, rock1[0], rock1[1], rock1[2], 1f, 9, 10)
+            mb.appendSphere(0f, height - 0.65f, zArc, 0.7f, rock2[0], rock2[1], rock2[2], 1f, 9, 10)
+        }
 
         return mb.build()
     }
@@ -1056,12 +1078,17 @@ object Models3D {
         }
 
         // Hanging rock formations / stalactite clusters
-        mb.appendCone(-1.6f, ceilY - 0.72f, -0.3f, 0.09f, 0.34f, rock2[0], rock2[1], rock2[2], 1f, 7)
-        mb.appendCone(1.4f,  ceilY - 0.8f,   0.4f, 0.07f, 0.42f, rock1[0], rock1[1], rock1[2], 1f, 7)
-        mb.appendCone(-0.5f, ceilY - 0.65f,  0.18f, 0.11f, 0.28f, rock2[0], rock2[1], rock2[2], 1f, 8)
-        mb.appendCone(0.8f,  ceilY - 0.88f, -0.42f, 0.08f, 0.48f, rock1[0], rock1[1], rock1[2], 1f, 7)
-        mb.appendCone(-2.0f, ceilY - 0.7f,   0.06f, 0.1f,  0.36f, rock2[0], rock2[1], rock2[2], 1f, 8)
-        mb.appendCone(2.1f,  ceilY - 0.62f, -0.22f, 0.09f, 0.3f,  rock1[0], rock1[1], rock1[2], 1f, 7)
+        mb.appendCone(-1.6f, ceilY - 0.5f, -0.3f, 0.09f, 0.34f, rock2[0], rock2[1], rock2[2], 1f, 7)
+        mb.appendCone(1.4f,  ceilY - 0.56f, 0.4f, 0.07f, 0.42f, rock1[0], rock1[1], rock1[2], 1f, 7)
+        mb.appendCone(-0.5f, ceilY - 0.46f, 0.18f, 0.11f, 0.28f, rock2[0], rock2[1], rock2[2], 1f, 8)
+        mb.appendCone(0.8f,  ceilY - 0.6f, -0.42f, 0.08f, 0.48f, rock1[0], rock1[1], rock1[2], 1f, 7)
+        mb.appendCone(-2.0f, ceilY - 0.5f, 0.06f, 0.1f, 0.36f, rock2[0], rock2[1], rock2[2], 1f, 8)
+        mb.appendCone(2.1f,  ceilY - 0.44f, -0.22f, 0.09f, 0.3f, rock1[0], rock1[1], rock1[2], 1f, 7)
+        // Attach points to avoid "floating" icicles/stalactites.
+        mb.appendSphere(-1.6f, ceilY - 0.22f, -0.3f, 0.08f, rock2[0], rock2[1], rock2[2], 1f, 7, 8)
+        mb.appendSphere(1.4f, ceilY - 0.22f, 0.4f, 0.07f, rock1[0], rock1[1], rock1[2], 1f, 7, 8)
+        mb.appendSphere(-0.5f, ceilY - 0.22f, 0.18f, 0.08f, rock2[0], rock2[1], rock2[2], 1f, 7, 8)
+        mb.appendSphere(0.8f, ceilY - 0.2f, -0.42f, 0.07f, rock1[0], rock1[1], rock1[2], 1f, 7, 8)
 
         // Irregular ceiling rock chunks
         mb.appendSphere(-1.2f, ceilY - 0.36f, -0.2f, 0.28f, rock1[0], rock1[1], rock1[2], 1f, 8, 9)
@@ -1087,6 +1114,22 @@ object Models3D {
         val mesh = mb.build()
         mesh.silhouetteMode = 2
         return mesh
+    }
+
+    fun createCaveBat(): Mesh {
+        val mb = MeshBuilder()
+        val body = floatArrayOf(0.08f, 0.08f, 0.1f)
+        val wing = floatArrayOf(0.1f, 0.1f, 0.12f)
+        val eye = floatArrayOf(0.18f, 0.24f, 0.34f)
+        mb.appendSphere(0f, 0.12f, 0f, 0.11f, body[0], body[1], body[2], 1f, 7, 8)
+        mb.appendCone(0f, 0.02f, 0f, 0.05f, 0.18f, body[0], body[1], body[2], 1f, 7)
+        mb.appendCone(-0.07f, 0.22f, -0.02f, 0.02f, 0.08f, body[0], body[1], body[2], 1f, 6)
+        mb.appendCone(0.07f, 0.22f, -0.02f, 0.02f, 0.08f, body[0], body[1], body[2], 1f, 6)
+        mb.appendBox(-0.25f, 0.12f, 0f, 0.32f, 0.02f, 0.22f, wing[0], wing[1], wing[2])
+        mb.appendBox(0.25f, 0.12f, 0f, 0.32f, 0.02f, 0.22f, wing[0], wing[1], wing[2])
+        mb.appendSphere(-0.02f, 0.14f, 0.09f, 0.01f, eye[0], eye[1], eye[2], 1f, 6, 6)
+        mb.appendSphere(0.02f, 0.14f, 0.09f, 0.01f, eye[0], eye[1], eye[2], 1f, 6, 6)
+        return mb.build()
     }
 
     // Crossed warning plank sign nailed to a post
@@ -1208,10 +1251,15 @@ object Models3D {
 
     fun createIcicleHazardCluster(): Mesh {
         val mb = MeshBuilder()
-        val ice = floatArrayOf(0.56f, 0.78f, 0.95f)
-        mb.appendCone(0f, 1.62f, 0f, 0.08f, 0.92f, ice[0], ice[1], ice[2], 1f, 8)
-        mb.appendCone(-0.24f, 1.68f, 0.14f, 0.06f, 0.74f, ice[0], ice[1], ice[2], 1f, 8)
-        mb.appendCone(0.2f, 1.72f, -0.12f, 0.05f, 0.62f, ice[0], ice[1], ice[2], 1f, 8)
+        val iceA = floatArrayOf(0.56f, 0.78f, 0.95f)
+        val iceB = floatArrayOf(0.48f, 0.7f, 0.9f)
+        // Wall-attached ice sheet from ceiling down to floor (non-center walkway profile)
+        mb.appendBox(-0.06f, 0.96f, 0f, 0.08f, 1.92f, 0.76f, iceB[0], iceB[1], iceB[2], 1f)
+        mb.appendBox(0.03f, 1.24f, 0.18f, 0.06f, 1.42f, 0.3f, iceA[0], iceA[1], iceA[2], 1f)
+        mb.appendBox(0.02f, 0.7f, -0.2f, 0.05f, 1.2f, 0.26f, iceA[0], iceA[1], iceA[2], 1f)
+        mb.appendCone(0.04f, 0.38f, 0.2f, 0.03f, 0.48f, iceA[0], iceA[1], iceA[2], 1f, 7)
+        mb.appendCone(-0.02f, 0.34f, -0.12f, 0.03f, 0.44f, iceA[0], iceA[1], iceA[2], 1f, 7)
+        mb.appendSphere(0f, 1.9f, 0f, 0.1f, iceB[0], iceB[1], iceB[2], 1f, 7, 8)
         val mesh = mb.build()
         mesh.silhouetteMode = 2
         return mesh

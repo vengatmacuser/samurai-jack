@@ -103,6 +103,12 @@ class MainActivity : GameActivity(), SensorEventListener {
     // Controls
     private var targetJoystickMoveVec = Vector3(0f, 0f, 0f)
     private var joystickMoveVec = Vector3(0f, 0f, 0f)
+    private var targetCameraLookVec = Vector3(0f, 0f, 0f)
+    private var cameraLookVec = Vector3(0f, 0f, 0f)
+    private var cameraOrbitYawDeg = 180f
+    private var cameraOrbitPitchDeg = 10f
+    private var thunderPulse = 0f
+    private var nextThunderAtMs = 0L
     private var animTime = 0f
 
     // Gameplay parameters
@@ -151,7 +157,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                 GameState.STAGE_SELECT -> R.drawable.bg_map
                 else -> {
                     when (currentStageIndex) {
-                        0 -> if (isStage1InsideMine) R.drawable.bg_frosthollow else R.drawable.bg_port
+                        0 -> if (isStage1InsideMine) R.drawable.bg_frosthollow else R.drawable.bg_stage1_outside
                         1 -> R.drawable.bg_forest      // Stage 2: The Young Prince
                         2 -> R.drawable.bg_jungle      // Stage 3: Journey Across the World
                         3 -> R.drawable.bg_village     // Stage 4: The Sacred Sword
@@ -194,6 +200,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                 GameUI(
                     gameState = gameState,
                     currentStageIndex = currentStageIndex,
+                    isStage1InsideMine = isStage1InsideMine,
                     unlockedStageCount = unlockedStageCount,
                     playerHealth = playerHealth,
                     playerSwordEnergy = playerSwordEnergy,
@@ -222,6 +229,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                     },
                     onAdvanceText = { advanceDialogue() },
                     onMove = { dx, dz -> targetJoystickMoveVec = Vector3(dx, 0f, dz) },
+                    onLook = { dx, dz -> targetCameraLookVec = Vector3(dx, 0f, dz) },
                     onMeleeAttack = { triggerAttack() },
                     onJump = { triggerJump() },
                     onBlock = { triggerBlock() }
@@ -368,7 +376,8 @@ class MainActivity : GameActivity(), SensorEventListener {
                     // Masking check: ignore swipes starting in virtual control quadrants
                     val inJoystickZone = event.x < screenWidth * 0.32f && event.y > screenHeight * 0.50f
                     val inButtonsZone = event.x > screenWidth * 0.68f && event.y > screenHeight * 0.50f
-                    touchStartedInMaskedZone = inJoystickZone || inButtonsZone
+                    val inLookZone = event.x > screenWidth * 0.78f && event.y < screenHeight * 0.30f
+                    touchStartedInMaskedZone = inJoystickZone || inButtonsZone || inLookZone
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!touchStartedInMaskedZone) {
@@ -464,6 +473,11 @@ class MainActivity : GameActivity(), SensorEventListener {
         jackVelY = 0f
         isJumping = false
         jackState = "Idle"
+        targetCameraLookVec = Vector3(0f, 0f, 0f)
+        cameraLookVec = Vector3(0f, 0f, 0f)
+        cameraOrbitPitchDeg = 10f
+        thunderPulse = 0f
+        nextThunderAtMs = 0L
 
         enemyMeshes.clear()
         laserMeshes.clear()
@@ -504,6 +518,11 @@ class MainActivity : GameActivity(), SensorEventListener {
             subList.add(sky)
 
             if (index == 0) {
+                val tunnelTemplate = Models3D.createTunnelRockModule()
+                val ceilingTemplate = Models3D.createCaveCeilingSection(ceilY = 4.0f)
+                val exteriorRailTemplate = Models3D.createMiningRailSection(length = 8f, sleeperCount = 6)
+                val caveRailTemplate = Models3D.createMiningRailSection(length = 8f, sleeperCount = 7)
+                val batTemplate = Models3D.createCaveBat()
                 // Long Antarctic approach path to the mine entrance
                 for (zExt in -140..-20 step 10) {
                     val zExtF = zExt.toFloat()
@@ -580,7 +599,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                 for (zTrack in -124..-24 step 8) {
                     val zTrackF = zTrack.toFloat()
                     val tpX = getPathX(zTrackF)
-                    val rail = Models3D.createMiningRailSection(length = 8f, sleeperCount = 6)
+                    val rail = exteriorRailTemplate.createInstance()
                     rail.position = Vector3(tpX, 0f, zTrackF)
                     environmentMeshes.add(rail)
                     subList.add(rail)
@@ -597,22 +616,29 @@ class MainActivity : GameActivity(), SensorEventListener {
                     val pathX = getPathX(zF)
                     val yaw = getPathYaw(zF)
 
-                    val tunnelModule = Models3D.createTunnelRockModule()
+                    val tunnelModule = tunnelTemplate.createInstance()
                     tunnelModule.position = Vector3(pathX, 0f, zF)
                     tunnelModule.rotation.y = yaw
                     environmentMeshes.add(tunnelModule)
                     subList.add(tunnelModule)
 
                     // Ceiling detail every module
-                    val ceiling = Models3D.createCaveCeilingSection(ceilY = 4.0f)
+                    val ceiling = ceilingTemplate.createInstance()
                     ceiling.position = Vector3(pathX, 0f, zF)
                     ceiling.rotation.y = yaw
                     environmentMeshes.add(ceiling)
                     subList.add(ceiling)
 
-                    val railSection = Models3D.createMiningRailSection(length = 8f, sleeperCount = 7)
-                    railSection.position = Vector3(pathX, 0f, zF)
-                    railSection.rotation.y = yaw
+                }
+
+                // Continuous rail spine through the mine to avoid visible gaps.
+                for (zRail in -12..1500 step 8) {
+                    val zRailF = zRail.toFloat()
+                    val railPathX = getPathX(zRailF)
+                    val railYaw = getPathYaw(zRailF)
+                    val railSection = caveRailTemplate.createInstance()
+                    railSection.position = Vector3(railPathX, 0f, zRailF)
+                    railSection.rotation.y = railYaw
                     environmentMeshes.add(railSection)
                     subList.add(railSection)
                 }
@@ -883,7 +909,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                 }
 
                 // Ceiling lamps and warm route guidance through the full mine
-                for (zCl in 0..1500 step 24) {
+                for (zCl in 0..1500 step 32) {
                     val clF = zCl.toFloat()
                     val clPathX = getPathX(clF)
                     val offsetX = when ((zCl / 24) % 3) { 0 -> 0f; 1 -> -1.2f; else -> 1.2f }
@@ -894,7 +920,26 @@ class MainActivity : GameActivity(), SensorEventListener {
                     mineLanternAnchors.add(Vector3(clPathX + offsetX, 2.84f, clF))
                 }
 
-                for (zProp in -6..1500 step 36) {
+                for (zBat in 24..1500 step 64) {
+                    val zBatF = zBat.toFloat()
+                    val batPathX = getPathX(zBatF)
+                    for (i in 0..2) {
+                        val bat = batTemplate.createInstance()
+                        val side = if ((zBat / 32 + i) % 2 == 0) -1.7f else 1.7f
+                        bat.position = Vector3(
+                            batPathX + side + (i - 1) * 0.45f,
+                            3.05f + (i % 2) * 0.35f,
+                            zBatF + i * 0.9f
+                        )
+                        bat.rotation.y = if (side > 0f) -24f - i * 8f else 24f + i * 8f
+                        bat.rotation.z = if (i % 2 == 0) 8f else -8f
+                        bat.scale = Vector3(0.92f + i * 0.12f, 0.92f + i * 0.12f, 0.92f + i * 0.12f)
+                        environmentMeshes.add(bat)
+                        subList.add(bat)
+                    }
+                }
+
+                for (zProp in -6..1500 step 72) {
                     val zPropF = zProp.toFloat()
                     val propPathX = getPathX(zPropF)
                     val side = if ((zProp / 6) % 2 == 0) 3.35f else -3.35f
@@ -907,13 +952,13 @@ class MainActivity : GameActivity(), SensorEventListener {
                 }
 
                 // Mid/deep cave dressing and progression after first handcrafted section
-                for (zDeep in 96..1500 step 24) {
+                for (zDeep in 96..1500 step 48) {
                     val zDeepF = zDeep.toFloat()
                     val deepPathX = getPathX(zDeepF)
                     val depthFactor = ((zDeepF - 96f) / 1404f).coerceIn(0f, 1f)
 
-                    val debris = Models3D.createCoalDebrisPatch(size = 0.86f + depthFactor * 0.32f)
-                    debris.position = Vector3(deepPathX + if ((zDeep / 24) % 2 == 0) 0.7f else -0.7f, 0f, zDeepF)
+                    val debris = Models3D.createCoalDebrisPatch(size = 0.78f + depthFactor * 0.24f)
+                    debris.position = Vector3(deepPathX + if ((zDeep / 48) % 2 == 0) 0.7f else -0.7f, 0f, zDeepF)
                     environmentMeshes.add(debris)
                     subList.add(debris)
 
@@ -937,7 +982,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                     subList.add(crystal)
                     mineCrystalAnchors.add(Vector3(deepPathX + crystalSide * 0.9f, 1.0f, zDeepF + 0.2f))
 
-                    if (zDeep % 72 == 0) {
+                    if (zDeep % 144 == 0) {
                         val fogDeep = Models3D.createMineFogBank()
                         fogDeep.position = Vector3(deepPathX + if ((zDeep / 72) % 2 == 0) 0.55f else -0.55f, 0f, zDeepF + 0.5f)
                         fogDeep.scale = Vector3(0.72f, 0.68f, 0.72f)
@@ -1009,11 +1054,11 @@ class MainActivity : GameActivity(), SensorEventListener {
 
                 val fallingIcicleZ = 24f
                 val icicleHazard = Models3D.createIcicleHazardCluster()
-                icicleHazard.position = Vector3(getPathX(fallingIcicleZ) + 0.1f, 0f, fallingIcicleZ)
+                icicleHazard.position = Vector3(getPathX(fallingIcicleZ) + 2.8f, 0f, fallingIcicleZ)
                 icicleHazard.scale = Vector3(1.2f, 1.2f, 1.2f)
+                icicleHazard.rotation.y = -18f
                 environmentMeshes.add(icicleHazard)
                 subList.add(icicleHazard)
-                addMineObstacle(0.1f, fallingIcicleZ, 0.52f)
 
                 val fallenTimberZ = 20f
                 val fallenTimber = Models3D.createCollapsedSupportDebris()
@@ -1219,9 +1264,11 @@ class MainActivity : GameActivity(), SensorEventListener {
 
         // Initialize camera position immediately to prevent starting frame jump
         if (index == 0) {
-            renderer.cameraPos = Vector3(getPathX(jackPos.z - 5.5f), 1.8f, jackPos.z - 5.5f)
-            renderer.cameraTarget = Vector3(getPathX(jackPos.z + 1.8f), 1.0f, jackPos.z + 1.8f)
+            cameraOrbitYawDeg = getPathYaw(jackPos.z) + 180f
+            renderer.cameraPos = Vector3(getPathX(jackPos.z - 5.8f), 2.0f, jackPos.z - 5.8f)
+            renderer.cameraTarget = Vector3(getPathX(jackPos.z + 2.0f), 1.0f, jackPos.z + 2.0f)
         } else {
+            cameraOrbitYawDeg = 180f
             renderer.cameraPos = Vector3(0.9f, 1.8f, -5.5f)
             renderer.cameraTarget = Vector3(-0.2f, 1.0f, 1.8f)
         }
@@ -1419,8 +1466,12 @@ class MainActivity : GameActivity(), SensorEventListener {
         // Smoothly interpolate joystick vectors
         joystickMoveVec.x += (targetJoystickMoveVec.x - joystickMoveVec.x) * 0.18f
         joystickMoveVec.z += (targetJoystickMoveVec.z - joystickMoveVec.z) * 0.18f
+        cameraLookVec.x += (targetCameraLookVec.x - cameraLookVec.x) * 0.16f
+        cameraLookVec.z += (targetCameraLookVec.z - cameraLookVec.z) * 0.16f
         if (abs(joystickMoveVec.x) < 0.01f && targetJoystickMoveVec.x == 0f) joystickMoveVec.x = 0f
         if (abs(joystickMoveVec.z) < 0.01f && targetJoystickMoveVec.z == 0f) joystickMoveVec.z = 0f
+        if (abs(cameraLookVec.x) < 0.01f && targetCameraLookVec.x == 0f) cameraLookVec.x = 0f
+        if (abs(cameraLookVec.z) < 0.01f && targetCameraLookVec.z == 0f) cameraLookVec.z = 0f
 
         // Update animation timer
         if (jackState == "Run") {
@@ -1471,7 +1522,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                 // Winding mine path: movement is relative to the path center to prevent clipping
                 val currentPathX = getPathX(jackPos.z)
                 var relX = jackPos.x - currentPathX
-                relX = (relX + joystickMoveVec.x * moveSpeed).coerceIn(-2.5f, 2.5f)
+                relX = (relX + joystickMoveVec.x * moveSpeed).coerceIn(-3.6f, 3.6f)
                 
                 // Move in Z
                 val targetZ = (jackPos.z + joystickMoveVec.z * moveSpeed).coerceIn(limitZ[0], limitZ[1])
@@ -1543,37 +1594,84 @@ class MainActivity : GameActivity(), SensorEventListener {
         skyMesh.position.x = jackPos.x
         skyMesh.position.z = jackPos.z
 
-        // 3. Move Camera smoothly behind Jack (Third-Person OTS orbit)
-        val targetCamX = if (currentStageIndex == 0) {
-            // Keep camera centered on path at its Z position, blended with character's relative offset
-            val pathX = getPathX(jackPos.z - 5.5f)
-            pathX + (jackPos.x - getPathX(jackPos.z)) * 0.5f
+        // 3. Camera orbit with auto-follow and full 360 look control.
+        val lookActive = kotlin.math.abs(cameraLookVec.x) > 0.03f || kotlin.math.abs(cameraLookVec.z) > 0.03f
+        val movementYaw = if (jackState == "Run") {
+            jackMesh.rotation.y
+        } else if (currentStageIndex == 0) {
+            getPathYaw(jackPos.z)
         } else {
-            jackPos.x + 0.9f
+            jackMesh.rotation.y
         }
-        val targetCamY = jackPos.y + 1.4f
-        val targetCamZ = jackPos.z - 5.5f
-        renderer.cameraPos.x += (targetCamX - renderer.cameraPos.x) * 0.1f
-        renderer.cameraPos.y += (targetCamY - renderer.cameraPos.y) * 0.1f
-        renderer.cameraPos.z += (targetCamZ - renderer.cameraPos.z) * 0.1f
+        if (lookActive) {
+            cameraOrbitYawDeg = normalizeAngleDeg(cameraOrbitYawDeg + cameraLookVec.x * if (currentStageIndex == 0) 3.4f else 4.6f)
+            val minPitch = if (currentStageIndex == 0) -6f else -20f
+            val maxPitch = if (currentStageIndex == 0) 22f else 28f
+            cameraOrbitPitchDeg = (cameraOrbitPitchDeg + cameraLookVec.z * 2.6f).coerceIn(minPitch, maxPitch)
+        } else {
+            val desiredYaw = normalizeAngleDeg(movementYaw + 180f)
+            val alignSpeed = if (currentStageIndex == 0) 0.26f else 0.18f
+            cameraOrbitYawDeg = lerpAngleDeg(cameraOrbitYawDeg, desiredYaw, alignSpeed)
+            cameraOrbitPitchDeg += (11f - cameraOrbitPitchDeg) * 0.16f
+        }
+        val camDistance = if (currentStageIndex == 0) 4.2f else 5.6f
+        val yawRad = Math.toRadians(cameraOrbitYawDeg.toDouble())
+        val pitchRad = Math.toRadians(cameraOrbitPitchDeg.toDouble())
+        val cosPitch = kotlin.math.cos(pitchRad).toFloat()
+        var targetCamX = jackPos.x + (kotlin.math.sin(yawRad).toFloat() * cosPitch * camDistance)
+        val targetCamY = jackPos.y + 1.0f + (kotlin.math.sin(pitchRad).toFloat() * camDistance)
+        val targetCamZ = jackPos.z + (kotlin.math.cos(yawRad).toFloat() * cosPitch * camDistance)
+        if (currentStageIndex == 0) {
+            targetCamX = clampToMineCameraCorridor(targetCamX, targetCamZ, 1.65f)
+        }
+        val cameraLerp = if (currentStageIndex == 0) 0.28f else 0.14f
+        renderer.cameraPos.x += (targetCamX - renderer.cameraPos.x) * cameraLerp
+        val adjustedCamY = if (currentStageIndex == 0) targetCamY.coerceAtLeast(jackPos.y + 1.95f) else targetCamY
+        renderer.cameraPos.y += (adjustedCamY - renderer.cameraPos.y) * cameraLerp
+        renderer.cameraPos.z += (targetCamZ - renderer.cameraPos.z) * cameraLerp
+        if (currentStageIndex == 0) {
+            renderer.cameraPos.x = clampToMineCameraCorridor(renderer.cameraPos.x, renderer.cameraPos.z, 1.65f)
+        }
 
         // Apply device tilt/motion to shift camera focus (target looking direction) left/right
-        val targetTiltOffset = (-sensorTiltX * 0.3f).coerceIn(-2.5f, 2.5f)
+        val tiltStrength = if (currentStageIndex == 0) 0.12f else 0.3f
+        val tiltRange = if (currentStageIndex == 0) 0.75f else 2.5f
+        val targetTiltOffset = (-sensorTiltX * tiltStrength).coerceIn(-tiltRange, tiltRange)
         smoothedCameraTiltOffset += (targetTiltOffset - smoothedCameraTiltOffset) * 0.1f
         
-        val targetTargetX = if (currentStageIndex == 0) {
-            jackPos.x + smoothedCameraTiltOffset
-        } else {
-            jackPos.x - 0.2f + smoothedCameraTiltOffset
-        }
+        val lookYawDeg = if (lookActive) normalizeAngleDeg(cameraOrbitYawDeg + 180f) else movementYaw
+        val lookYawRad = Math.toRadians(lookYawDeg.toDouble())
+        val targetTargetX = jackPos.x + kotlin.math.sin(lookYawRad).toFloat() * 1.8f + smoothedCameraTiltOffset
+        val targetTargetZ = jackPos.z + kotlin.math.cos(lookYawRad).toFloat() * 1.8f
         val flashOffset = if (specialFlashActive) (sin(specialFlashTime * 50f) * 0.2f) else 0f
-        renderer.cameraTarget = Vector3(targetTargetX + flashOffset, jackPos.y + 0.6f, jackPos.z + 1.8f)
+        val adjustedTargetX = if (currentStageIndex == 0) {
+            clampToMineCameraCorridor(targetTargetX + flashOffset, targetTargetZ, 2.0f)
+        } else {
+            targetTargetX + flashOffset
+        }
+        renderer.cameraTarget = Vector3(adjustedTargetX, jackPos.y + 0.68f, targetTargetZ)
 
         // Update current rendering stage details
         renderer.currentStageIndex = currentStageIndex
         renderer.hitFlashAmount = hitFlashTimer
         if (hitFlashTimer > 0f) {
             hitFlashTimer -= 0.05f
+        }
+        if (currentStageIndex == 0 && jackPos.z < 0f) {
+            if (nextThunderAtMs == 0L) {
+                nextThunderAtMs = nowMs + 1800L
+            }
+            if (nowMs >= nextThunderAtMs && thunderPulse <= 0f) {
+                thunderPulse = 0.95f
+                nextThunderAtMs = nowMs + 2800L + (Math.random() * 4200.0).toLong()
+            }
+            if (thunderPulse > 0f) {
+                renderer.hitFlashAmount = kotlin.math.max(renderer.hitFlashAmount, thunderPulse * 0.45f)
+                renderer.pointLightPos = Vector3(jackPos.x, 6.2f, jackPos.z + 10f)
+                renderer.pointLightColor = floatArrayOf(0.72f, 0.84f, 1f)
+                renderer.pointLightIntensity = kotlin.math.max(renderer.pointLightIntensity, 2.2f * thunderPulse)
+                thunderPulse = (thunderPulse - 0.07f).coerceAtLeast(0f)
+            }
         }
 
         // Low health heartbeat triggers
@@ -1758,7 +1856,17 @@ class MainActivity : GameActivity(), SensorEventListener {
     private fun getPathX(z: Float): Float {
         if (currentStageIndex == 0) {
             if (z < 0f) return 0f
-            return 2.2f * sin(z * 0.08f)
+            val segment = 42f
+            val period = segment * 2f
+            val local = ((z % period) + period) % period
+            val phase = local / segment
+            val zig = if (phase < 1f) {
+                -1f + phase * 2f
+            } else {
+                1f - (phase - 1f) * 2f
+            }
+            val secondary = 0.35f * sin(z * 0.05f)
+            return zig * 2.8f + secondary
         }
         return 0f
     }
@@ -1881,10 +1989,19 @@ class MainActivity : GameActivity(), SensorEventListener {
         return Vector3(pushX, 0.4f, pushZ)
     }
 
+    private fun clampToMineCameraCorridor(x: Float, z: Float, halfWidth: Float): Float {
+        if (currentStageIndex != 0) return x
+        val center = getPathX(z)
+        return center + (x - center).coerceIn(-halfWidth, halfWidth)
+    }
+
     private fun refocusCameraOnCharacter() {
         // Reset tilt offset
         sensorTiltX = 0f
         smoothedCameraTiltOffset = 0f
+        targetCameraLookVec = Vector3(0f, 0f, 0f)
+        cameraLookVec = Vector3(0f, 0f, 0f)
+        cameraOrbitPitchDeg = 10f
         
         // Reset camera positions OTS behind Jack
         val targetCamX = if (currentStageIndex == 0) {
@@ -1895,15 +2012,23 @@ class MainActivity : GameActivity(), SensorEventListener {
         }
         val targetCamY = jackPos.y + 1.4f
         val targetCamZ = jackPos.z - 5.5f
-        renderer.cameraPos = Vector3(targetCamX, targetCamY, targetCamZ)
-        
-        val targetTargetX = if (currentStageIndex == 0) {
-            jackPos.x
-        } else {
-            jackPos.x - 0.2f
-        }
-        renderer.cameraTarget = Vector3(targetTargetX, jackPos.y + 0.6f, jackPos.z + 1.8f)
+        cameraOrbitYawDeg = normalizeAngleDeg(if (currentStageIndex == 0) getPathYaw(jackPos.z) + 180f else 180f)
+        val adjustedCamX = if (currentStageIndex == 0) clampToMineCameraCorridor(targetCamX, targetCamZ, 1.65f) else targetCamX
+        renderer.cameraPos = Vector3(adjustedCamX, targetCamY, targetCamZ)
+        renderer.cameraTarget = Vector3(jackPos.x, jackPos.y + 0.6f, jackPos.z + 1.8f)
         
         SoundManager.triggerSpecialCharge()
+    }
+
+    private fun normalizeAngleDeg(angle: Float): Float {
+        var a = angle % 360f
+        if (a < 0f) a += 360f
+        return a
+    }
+
+    private fun lerpAngleDeg(current: Float, target: Float, t: Float): Float {
+        var delta = (target - current + 540f) % 360f - 180f
+        if (delta > 180f) delta -= 360f
+        return normalizeAngleDeg(current + delta * t.coerceIn(0f, 1f))
     }
 }

@@ -88,7 +88,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
             0 -> if (cameraTarget.z >= 0f) {
                 com.thigazhini_labs.samuraijack.R.drawable.bg_frosthollow
             } else {
-                com.thigazhini_labs.samuraijack.R.drawable.bg_port
+                com.thigazhini_labs.samuraijack.R.drawable.bg_stage1_outside
             }
             1 -> com.thigazhini_labs.samuraijack.R.drawable.bg_forest
             2 -> com.thigazhini_labs.samuraijack.R.drawable.bg_jungle

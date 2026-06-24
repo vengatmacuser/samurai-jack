@@ -52,6 +52,7 @@ import kotlinx.coroutines.delay
 fun GameUI(
     gameState: GameState,
     currentStageIndex: Int,
+    isStage1InsideMine: Boolean,
     unlockedStageCount: Int,
     playerHealth: Float,
     playerSwordEnergy: Float,
@@ -70,6 +71,7 @@ fun GameUI(
     onBackToMenu: () -> Unit,
     onAdvanceText: () -> Unit,
     onMove: (Float, Float) -> Unit,
+    onLook: (Float, Float) -> Unit,
     onMeleeAttack: () -> Unit,
     onJump: () -> Unit,
     onBlock: () -> Unit
@@ -92,6 +94,7 @@ fun GameUI(
                 playerCrystals = playerCrystals,
                 onBack = onBackToMenu,
                 onMove = onMove,
+                onLook = onLook,
                 onMeleeAttack = onMeleeAttack,
                 onJump = onJump,
                 onBlock = onBlock
@@ -102,6 +105,9 @@ fun GameUI(
 
         // Gameplay combat overlays (Slash, flash, speed lines) based on jackState
         if (gameState == GameState.GAMEPLAY) {
+            if (currentStageIndex == 0 && !isStage1InsideMine) {
+                SnowfallOverlay()
+            }
             if (jackState == "Attack") {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1067,10 +1073,12 @@ fun GameplayActionButton(
     icon: String,
     onClick: () -> Unit,
     sizeDp: Dp,
+    label: String? = null,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    var tapFlash by remember { mutableFloatStateOf(0f) }
     
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.88f else 1.0f,
@@ -1078,7 +1086,23 @@ fun GameplayActionButton(
         label = "btnScale"
     )
     
-    val glowColor = if (isPressed) Color.White.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.6f)
+    LaunchedEffect(tapFlash) {
+        if (tapFlash > 0f) {
+            animate(
+                initialValue = tapFlash,
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 280, easing = LinearEasing)
+            ) { value, _ ->
+                tapFlash = value
+            }
+        }
+    }
+
+    val glowColor = when {
+        tapFlash > 0f -> Color(0xFF7ED3FF).copy(alpha = 0.8f + tapFlash * 0.2f)
+        isPressed -> Color.White.copy(alpha = 0.95f)
+        else -> Color.White.copy(alpha = 0.6f)
+    }
     val buttonBg = if (isPressed) {
         Brush.radialGradient(listOf(Color(0x8848515B), Color(0xAA101318)))
     } else {
@@ -1094,15 +1118,37 @@ fun GameplayActionButton(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // Disable default ripple to use our custom scale/glow feedback
-                onClick = onClick
+                onClick = {
+                    tapFlash = 1f
+                    onClick()
+                }
             ),
         contentAlignment = Alignment.Center
     ) {
+        if (tapFlash > 0f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .border(2.6.dp, Color(0xFF8CE8FF).copy(alpha = tapFlash), CircleShape)
+            )
+        }
         Text(
             text = icon,
             fontSize = if (sizeDp > 50.dp) 26.sp else 18.sp,
             modifier = Modifier.alpha(if (isPressed) 1.0f else 0.9f)
         )
+        if (label != null) {
+            Text(
+                text = label,
+                fontSize = 8.sp,
+                color = Color.White.copy(alpha = 0.85f),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.6.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp)
+            )
+        }
     }
 }
 
@@ -1116,6 +1162,7 @@ fun GameplayHUD(
     playerCrystals: Int,
     onBack: () -> Unit,
     onMove: (Float, Float) -> Unit,
+    onLook: (Float, Float) -> Unit,
     onMeleeAttack: () -> Unit,
     onJump: () -> Unit,
     onBlock: () -> Unit
@@ -1282,6 +1329,16 @@ fun GameplayHUD(
                         }
                     }
                     Text(
+                        text = "SAMURAI JACK",
+                        color = Color(0xFFCED8E2),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.9.sp,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = (-12).dp)
+                    )
+                    Text(
                         text = "${playerHealth.toInt()} HP",
                         color = Color.White,
                         fontSize = 10.sp,
@@ -1307,6 +1364,35 @@ fun GameplayHUD(
                                 RoundedCornerShape(2.dp)
                             )
                     )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0x8A0B0E13), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, Color(0x99FFD54F), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🪙", fontSize = 8.sp)
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(text = "$playerCoins", color = Color(0xFFFFD54F), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0x8A0B0E13), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, Color(0x9939D5FF), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("💎", fontSize = 8.sp)
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(text = "$playerCrystals", color = Color(0xFF39D5FF), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 if (isHealthRegenActive) {
@@ -1349,65 +1435,16 @@ fun GameplayHUD(
             )
         }
 
-        // 3. Currency counters moved to top-right
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 74.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Row(
-                modifier = Modifier
-                    .background(Color(0x8A0B0E13), RoundedCornerShape(8.dp))
-                    .border(0.8.dp, Color(0x99FFD54F), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("🪙", fontSize = 9.sp)
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(text = "$playerCoins", color = Color(0xFFFFD54F), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .background(Color(0x8A0B0E13), RoundedCornerShape(8.dp))
-                    .border(0.8.dp, Color(0x9939D5FF), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("💎", fontSize = 9.sp)
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(text = "$playerCrystals", color = Color(0xFF39D5FF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // 4. Pause Button (Top-Right)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 10.dp)
-                .size(52.dp)
-                .background(Color(0xAA1A1E25), CircleShape)
-                .border(1.6.dp, Color.White.copy(alpha = 0.78f), CircleShape)
-                .clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Box(modifier = Modifier.size(3.dp, 12.dp).background(Color.White))
-                Box(modifier = Modifier.size(3.dp, 12.dp).background(Color.White))
-            }
-        }
-
-        // 5. Floating Virtual Joystick (Active anywhere on the left panel)
+        // 3. Floating Virtual Joystick (Active anywhere on the left panel)
         var joystickCenter by remember { mutableStateOf(Offset.Zero) }
         var knobOffset by remember { mutableStateOf(Offset.Zero) }
         var isJoystickPressed by remember { mutableStateOf(false) }
         var containerSize by remember { mutableStateOf(IntSize.Zero) }
         
         val density = LocalDensity.current
-        val joystickRadius = 56.dp
+        val joystickRadius = 66.dp
         val joystickRadiusPx = with(density) { joystickRadius.toPx() }
-        val joystickBaseSizePx = with(density) { 112.dp.toPx() }
+        val joystickBaseSizePx = with(density) { 132.dp.toPx() }
         
         val defaultCenter = Offset(
             x = with(density) { 100.dp.toPx() },
@@ -1422,7 +1459,7 @@ fun GameplayHUD(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.48f)
+                .fillMaxWidth(0.6f)
                 .align(Alignment.BottomStart)
                 .onGloballyPositioned { coordinates ->
                     containerSize = coordinates.size
@@ -1474,7 +1511,7 @@ fun GameplayHUD(
                             x = with(density) { (activeCenter.x - joystickBaseSizePx / 2f).toDp() },
                             y = with(density) { (activeCenter.y - joystickBaseSizePx / 2f).toDp() }
                         )
-                        .size(112.dp)
+                        .size(132.dp)
                         .background(
                             brush = Brush.radialGradient(
                                 colors = if (isJoystickPressed) {
@@ -1508,7 +1545,7 @@ fun GameplayHUD(
                                 x = with(density) { knobOffset.x.toDp() },
                                 y = with(density) { knobOffset.y.toDp() }
                             )
-                            .size(46.dp)
+                            .size(52.dp)
                             .background(
                                 color = if (isJoystickPressed) Color(0xCC2F343C) else Color(0xBBD2D5DA),
                                 shape = CircleShape
@@ -1523,6 +1560,110 @@ fun GameplayHUD(
             }
         }
 
+        // 4. Camera look joystick centered on right side with clear cardinal arrows
+        var lookCenter by remember { mutableStateOf(Offset.Zero) }
+        var lookKnobOffset by remember { mutableStateOf(Offset.Zero) }
+        var isLookPressed by remember { mutableStateOf(false) }
+        val lookRadius = 58.dp
+        val lookRadiusPx = with(density) { lookRadius.toPx() }
+        val lookBaseSizePx = with(density) { 120.dp.toPx() }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 14.dp)
+                .size(128.dp)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val down = awaitPointerEvent()
+                            val firstChange = down.changes.firstOrNull() ?: continue
+                            if (firstChange.pressed) {
+                                firstChange.consume()
+                                isLookPressed = true
+                                lookCenter = Offset(size.width / 2f, size.height / 2f)
+                                lookKnobOffset = Offset.Zero
+
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val pointerChange = event.changes.firstOrNull() ?: break
+                                    if (pointerChange.pressed) {
+                                        pointerChange.consume()
+                                        val dragOffset = pointerChange.position - lookCenter
+                                        val dist = kotlin.math.sqrt(dragOffset.x * dragOffset.x + dragOffset.y * dragOffset.y)
+                                        lookKnobOffset = if (dist > lookRadiusPx) {
+                                            Offset(
+                                                dragOffset.x * lookRadiusPx / dist,
+                                                dragOffset.y * lookRadiusPx / dist
+                                            )
+                                        } else {
+                                            dragOffset
+                                        }
+                                        onLook(-lookKnobOffset.x / lookRadiusPx, -lookKnobOffset.y / lookRadiusPx)
+                                    } else {
+                                        break
+                                    }
+                                }
+                                isLookPressed = false
+                                lookKnobOffset = Offset.Zero
+                                onLook(0f, 0f)
+                            }
+                        }
+                    }
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color(0x664E6B87), Color(0x220B0E13))
+                        ),
+                        CircleShape
+                    )
+                    .border(
+                        width = 2.4.dp,
+                        color = Color(0xFFAEDFFF).copy(alpha = if (isLookPressed) 0.95f else 0.72f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.25f),
+                        start = Offset(size.width / 2f, 12f),
+                        end = Offset(size.width / 2f, size.height - 12f),
+                        strokeWidth = 2f
+                    )
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.25f),
+                        start = Offset(12f, size.height / 2f),
+                        end = Offset(size.width - 12f, size.height / 2f),
+                        strokeWidth = 2f
+                    )
+                }
+                Text("↑ N", color = Color.White.copy(alpha = 0.95f), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
+                Text("↓ S", color = Color.White.copy(alpha = 0.95f), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp))
+                Text("← W", color = Color.White.copy(alpha = 0.95f), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp))
+                Text("E →", color = Color.White.copy(alpha = 0.95f), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp))
+                Text("✥", color = Color(0xFFB7E7FF).copy(alpha = 0.8f), fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
+
+                Box(
+                    modifier = Modifier
+                        .offset(
+                            x = with(density) { lookKnobOffset.x.toDp() },
+                            y = with(density) { lookKnobOffset.y.toDp() }
+                        )
+                        .size(42.dp)
+                        .background(
+                            color = if (isLookPressed) Color(0xCC2D3A4A) else Color(0xAA9BB2C8),
+                            shape = CircleShape
+                        )
+                        .border(2.dp, Color.White.copy(alpha = 0.88f), CircleShape)
+                )
+            }
+        }
+
         // 5. Action Button Cluster (Bottom-Right)
         Box(
             modifier = Modifier
@@ -1533,17 +1674,19 @@ fun GameplayHUD(
         ) {
             // Large Sword Attack (Bottom-Right)
             GameplayActionButton(
-                icon = "🗡️",
+                icon = "⚔",
                 onClick = onMeleeAttack,
-                sizeDp = 82.dp,
+                sizeDp = 72.dp,
+                label = "ATK",
                 modifier = Modifier.align(Alignment.BottomEnd)
             )
 
             // Jump Button (Top-Right)
             GameplayActionButton(
-                icon = "⬆️",
+                icon = "⬆",
                 onClick = onJump,
                 sizeDp = 56.dp,
+                label = "JUMP",
                 modifier = Modifier.align(Alignment.TopEnd).padding(end = 10.dp, top = 2.dp)
             )
 
@@ -1552,6 +1695,7 @@ fun GameplayHUD(
                 icon = "🛡️",
                 onClick = onBlock,
                 sizeDp = 56.dp,
+                label = "GUARD",
                 modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 14.dp)
             )
         }
@@ -1567,6 +1711,41 @@ fun GameplayHUD(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 8.dp)
         )
+    }
+}
+
+@Composable
+fun SnowfallOverlay() {
+    val transition = rememberInfiniteTransition(label = "outsideSnow")
+    val fallT by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(5200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "snowFallT"
+    )
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .alpha(0.8f)
+    ) {
+        val flakes = 120
+        for (i in 0 until flakes) {
+            val seed = i * 97f
+            val xBase = ((i * 73) % 1000) / 1000f
+            val wave = kotlin.math.sin((fallT * 6.28f) + seed * 0.01f) * 0.018f
+            val x = ((xBase + wave + 1f) % 1f) * size.width
+            val y = ((fallT + (i / flakes.toFloat())) % 1f) * size.height
+            val r = 1.1f + (i % 4) * 0.55f
+            drawCircle(
+                color = Color.White.copy(alpha = 0.35f + (i % 5) * 0.1f),
+                radius = r,
+                center = Offset(x, y)
+            )
+        }
     }
 }
 
