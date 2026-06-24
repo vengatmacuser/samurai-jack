@@ -38,6 +38,7 @@ A premium Android application showcasing 3D rendering, modern UI design, and bes
 ### Core Android
 - **API Level**: Min 26, Target 35
 - **Language**: Kotlin 2.0
+- **Game Framework**: Android Game Development Kit (GameActivity + Native bootstrap)
 - **Compose**: 1.6.7
 - **Material 3**: 1.2.1
 

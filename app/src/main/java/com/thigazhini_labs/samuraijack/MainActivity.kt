@@ -7,7 +7,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,6 +25,7 @@ import com.thigazhini_labs.samuraijack.models.Mesh
 import com.thigazhini_labs.samuraijack.models.Models3D
 import com.thigazhini_labs.samuraijack.stages.Stages
 import com.thigazhini_labs.samuraijack.ui.GameUI
+import com.google.androidgamesdk.GameActivity
 import kotlinx.coroutines.*
 import kotlin.math.abs
 import kotlin.math.sin
@@ -44,7 +44,13 @@ enum class GameState {
 
 data class MineObstacle(val pathRelX: Float, val pathZ: Float, val radius: Float)
 
-class MainActivity : ComponentActivity(), SensorEventListener {
+class MainActivity : GameActivity(), SensorEventListener {
+
+    companion object {
+        init {
+            System.loadLibrary("main")
+        }
+    }
 
     // Sensors for motion controls
     private var sensorManager: SensorManager? = null

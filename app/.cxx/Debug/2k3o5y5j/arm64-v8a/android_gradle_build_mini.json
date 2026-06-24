@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/vengateswaran/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/vengateswaran/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "main::@6890427a1f51a3e7e1df": {
+      "artifactName": "main",
+      "abi": "arm64-v8a",
+      "output": "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so",
+      "runtimeFiles": []
+    }
+  }
+}

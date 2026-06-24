@@ -1,0 +1,38 @@
+{
+  "buildFiles": [
+    "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/vengateswaran/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/vengateswaran/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "main::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "x86_64",
+      "artifactName": "main",
+      "output": "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86_64/libmain.so",
+      "runtimeFiles": []
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/Users/vengateswaran/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/Users/vengateswaran/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}
