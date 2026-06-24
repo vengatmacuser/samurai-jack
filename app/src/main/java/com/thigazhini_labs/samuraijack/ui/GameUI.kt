@@ -55,6 +55,7 @@ fun GameUI(
     unlockedStageCount: Int,
     playerHealth: Float,
     playerSwordEnergy: Float,
+    isHealthRegenActive: Boolean,
     enemiesRemaining: Int,
     typedText: String,
     isTextFullyTyped: Boolean,
@@ -85,6 +86,7 @@ fun GameUI(
             GameState.GAMEPLAY -> GameplayHUD(
                 playerHealth = playerHealth,
                 playerSwordEnergy = playerSwordEnergy,
+                isHealthRegenActive = isHealthRegenActive,
                 enemiesRemaining = enemiesRemaining,
                 playerCoins = playerCoins,
                 playerCrystals = playerCrystals,
@@ -1108,6 +1110,7 @@ fun GameplayActionButton(
 fun GameplayHUD(
     playerHealth: Float,
     playerSwordEnergy: Float,
+    isHealthRegenActive: Boolean,
     enemiesRemaining: Int,
     playerCoins: Int,
     playerCrystals: Int,
@@ -1118,7 +1121,20 @@ fun GameplayHUD(
     onBlock: () -> Unit
 ) {
     var animatedHealth by remember { mutableStateOf(playerHealth) }
+    var previousHealth by remember { mutableStateOf(playerHealth) }
+    var damageFlashAlpha by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(playerHealth) {
+        if (playerHealth < previousHealth) {
+            damageFlashAlpha = 0.7f
+            animate(
+                initialValue = 0.7f,
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 360, easing = LinearEasing)
+            ) { value, _ ->
+                damageFlashAlpha = value
+            }
+        }
+        previousHealth = playerHealth
         delay(300) // Small delay before lagging health catches up
         animate(
             initialValue = animatedHealth,
@@ -1134,172 +1150,182 @@ fun GameplayHUD(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // 1. Top-Left Player Profile HUD
-        Box(
+        val healthPercentage = (playerHealth / 100f).coerceIn(0f, 1f)
+        val lowHp = healthPercentage < 0.2f
+        val infiniteTransition = rememberInfiniteTransition(label = "compactHudPulse")
+        val lowHpPulse by infiniteTransition.animateFloat(
+            initialValue = 0.45f,
+            targetValue = 0.95f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(800, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "lowHpPulse"
+        )
+        val regenRingAlpha by infiniteTransition.animateFloat(
+            initialValue = 0.2f,
+            targetValue = 0.85f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(900, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "regenRingAlpha"
+        )
+        val regenFlow by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "regenFlow"
+        )
+
+        // 1. Compact Top-Left HUD
+        Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 4.dp, top = 8.dp)
-                .widthIn(min = 250.dp, max = 330.dp)
+                .padding(start = 2.dp, top = 4.dp)
+                .widthIn(max = 220.dp)
                 .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.78f), Color(0xFF0C0D12).copy(alpha = 0.88f))
-                    ),
-                    shape = RoundedCornerShape(14.dp)
+                    Color(0xB3121419),
+                    RoundedCornerShape(12.dp)
                 )
-                .border(1.6.dp, Color(0xFFD41414).copy(alpha = 0.75f), RoundedCornerShape(14.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+                .border(1.dp, Color(0xFF7A2A2A).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .border(
+                        2.dp,
+                        if (damageFlashAlpha > 0f) Color(0xFFFF4444) else Color(0x66DCEEFF),
+                        CircleShape
+                    )
+                    .background(Color(0xCC0D0F14), CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                // Avatar (Jack's eyes crop)
-                val healthPercentage = playerHealth / 100f
-                val avatarRingColor = when {
-                    healthPercentage > 0.5f -> Color(0xFF4CAF50) // Green
-                    healthPercentage > 0.25f -> Color(0xFFFF9800) // Orange
-                    else -> Color(0xFFF44336) // Red
+                if (isHealthRegenActive) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .border(
+                                2.dp,
+                                Color(0xFF64B5F6).copy(alpha = regenRingAlpha),
+                                CircleShape
+                            )
+                    )
                 }
-                
+                Image(
+                    painter = painterResource(id = R.drawable.black_eyes),
+                    contentDescription = "Samurai Jack Portrait",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(7.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
                 Box(
                     modifier = Modifier
-                        .size(54.dp)
-                        .border(2.dp, avatarRingColor, RoundedCornerShape(27.dp))
-                        .background(Color.Black, RoundedCornerShape(27.dp)),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .height(16.dp)
+                        .background(Color(0x80201010), RoundedCornerShape(7.dp))
+                        .border(
+                            1.dp,
+                            if (lowHp) Color(0xFFFF5252).copy(alpha = lowHpPulse) else Color(0xAA7A2A2A),
+                            RoundedCornerShape(7.dp)
+                        )
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.black_eyes),
-                        contentDescription = "Avatar",
-                        contentScale = ContentScale.Crop,
+                    Box(
                         modifier = Modifier
-                            .size(50.dp)
-                            .graphicsLayer {
-                                clip = true
-                                shape = RoundedCornerShape(25.dp)
-                            }
+                            .fillMaxHeight()
+                            .fillMaxWidth(healthPercentage)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        if (lowHp) Color(0xFFC62828) else Color(0xFF8E1A1A),
+                                        if (lowHp) Color(0xFFFF5252) else Color(0xFFE53935)
+                                    )
+                                ),
+                                RoundedCornerShape(7.dp)
+                            )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth((animatedHealth / 100f).coerceIn(0f, 1f))
+                            .background(
+                                Color.White.copy(alpha = 0.16f),
+                                RoundedCornerShape(7.dp)
+                            )
+                    )
+                    if (damageFlashAlpha > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.White.copy(alpha = damageFlashAlpha * 0.45f), RoundedCornerShape(7.dp))
+                        )
+                    }
+                    if (isHealthRegenActive) {
+                        Canvas(modifier = Modifier.matchParentSize()) {
+                            val x1 = size.width * regenFlow
+                            val x2 = (size.width * ((regenFlow + 0.35f) % 1f))
+                            val x3 = (size.width * ((regenFlow + 0.7f) % 1f))
+                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.8f), radius = 1.8f, center = Offset(x1, size.height * 0.45f))
+                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.65f), radius = 1.4f, center = Offset(x2, size.height * 0.62f))
+                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.75f), radius = 1.6f, center = Offset(x3, size.height * 0.35f))
+                        }
+                    }
+                    Text(
+                        text = "${playerHealth.toInt()} HP",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Column {
-                    // Health Bar (HP label)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "HP",
-                            color = Color(0xFFE57373),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            modifier = Modifier.width(22.dp)
-                        )
-                        SlantedProgressBar(
-                            progress = (playerHealth / 100f).coerceIn(0f, 1f),
-                            laggingProgress = (animatedHealth / 100f).coerceIn(0f, 1f),
-                            color = Brush.horizontalGradient(listOf(Color(0xFFB71C1C), Color(0xFFE53935))),
-                            laggingColor = Color(0xFFFFCDD2).copy(alpha = 0.6f),
-                            backgroundColor = Color(0xFF2E0C0C),
-                            modifier = Modifier
-                                .size(170.dp, 13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${playerHealth.toInt()}",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Sword Energy
-                    val isEnergyFull = playerSwordEnergy >= 100f
-                    val infiniteTransition = rememberInfiniteTransition(label = "energyPulse")
-                    val pulseAlpha by infiniteTransition.animateFloat(
-                        initialValue = 0.6f,
-                        targetValue = 1.0f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(600, easing = LinearEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "alpha"
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(Color(0xAA0D1D26), RoundedCornerShape(2.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth((playerSwordEnergy / 100f).coerceIn(0f, 1f))
+                            .background(
+                                Brush.horizontalGradient(listOf(Color(0xFF006C8D), Color(0xFF00D2FF))),
+                                RoundedCornerShape(2.dp)
+                            )
                     )
+                }
 
+                if (isHealthRegenActive) {
+                    Spacer(modifier = Modifier.height(3.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(9.dp)
+                                .background(Color(0xFF5CC8FF), CircleShape)
+                                .border(1.dp, Color(0xFFD6F4FF), CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "NRG",
-                            color = if (isEnergyFull) Color(0xFFFFD54F) else Color(0xFF4DD0E1),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            modifier = Modifier.width(22.dp)
+                            text = "REGEN",
+                            color = Color(0xFF7ED3FF),
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp
                         )
-                        
-                        val energyBrush = if (isEnergyFull) {
-                            Brush.horizontalGradient(listOf(Color(0xFFFF8F00), Color(0xFFFFC107)))
-                        } else {
-                            Brush.horizontalGradient(listOf(Color(0xFF00838F), Color(0xFF00E5FF)))
-                        }
-                        
-                        SlantedProgressBar(
-                            progress = (playerSwordEnergy / 100f).coerceIn(0f, 1f),
-                            color = energyBrush,
-                            backgroundColor = Color(0xFF0A222B),
-                            modifier = Modifier
-                                .size(170.dp, 8.dp)
-                                .graphicsLayer {
-                                    if (isEnergyFull) {
-                                        alpha = pulseAlpha
-                                    }
-                                }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isEnergyFull) "MAX!" else "${playerSwordEnergy.toInt()}%",
-                            color = if (isEnergyFull) Color(0xFFFFD54F) else Color(0xFF80DEEA),
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Stats: Coins & Crystals
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Row(
-                            modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .border(0.5.dp, Color(0xFFFFD700).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("🪙", fontSize = 10.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$playerCoins",
-                                color = Color(0xFFFFD700),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Row(
-                            modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .border(0.5.dp, Color(0xFF00E5FF).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("💎", fontSize = 10.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$playerCrystals",
-                                color = Color(0xFF00E5FF),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                     }
                 }
             }
@@ -1323,14 +1349,46 @@ fun GameplayHUD(
             )
         }
 
-        // 3. Pause Button (Top-Right)
+        // 3. Currency counters moved to top-right
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 12.dp, end = 74.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Row(
+                modifier = Modifier
+                    .background(Color(0x8A0B0E13), RoundedCornerShape(8.dp))
+                    .border(0.8.dp, Color(0x99FFD54F), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("🪙", fontSize = 9.sp)
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(text = "$playerCoins", color = Color(0xFFFFD54F), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier
+                    .background(Color(0x8A0B0E13), RoundedCornerShape(8.dp))
+                    .border(0.8.dp, Color(0x9939D5FF), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("💎", fontSize = 9.sp)
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(text = "$playerCrystals", color = Color(0xFF39D5FF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // 4. Pause Button (Top-Right)
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 12.dp, end = 10.dp)
-                .size(54.dp)
-                .background(Color(0x22252C34), CircleShape)
-                .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape)
+                .size(52.dp)
+                .background(Color(0xAA1A1E25), CircleShape)
+                .border(1.6.dp, Color.White.copy(alpha = 0.78f), CircleShape)
                 .clickable { onBack() },
             contentAlignment = Alignment.Center
         ) {
@@ -1340,7 +1398,7 @@ fun GameplayHUD(
             }
         }
 
-        // 4. Floating Virtual Joystick (Active anywhere on the left panel)
+        // 5. Floating Virtual Joystick (Active anywhere on the left panel)
         var joystickCenter by remember { mutableStateOf(Offset.Zero) }
         var knobOffset by remember { mutableStateOf(Offset.Zero) }
         var isJoystickPressed by remember { mutableStateOf(false) }

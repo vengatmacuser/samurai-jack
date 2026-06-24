@@ -20,6 +20,7 @@ class Mesh {
     var isVisible = true
     var silhouetteMode = 0 // 0=normal, 1=silhouette, 2=glow
     var textureName: String? = null
+    var isHero = false
 
     fun initBuffers(vertices: FloatArray, normals: FloatArray, colors: FloatArray, indices: ShortArray) {
         indexCount = indices.size
@@ -565,38 +566,41 @@ object Models3D {
             mb.appendBox(0f, sleeperY, z, railSpacing + 0.68f, 0.10f, 0.26f, wr, wg, wb)
         }
 
-        // Dense ballast bed — enhanced visibility
-        mb.appendBox(0f, -0.02f, 0f, railSpacing + 1.85f, 0.12f, length, 0.28f, 0.24f, 0.18f)
-        mb.appendBox(-(railSpacing * 0.86f), 0.02f, 0f, 0.74f, 0.14f, length, 0.32f, 0.28f, 0.20f)
-        mb.appendBox( (railSpacing * 0.86f), 0.02f, 0f, 0.74f, 0.14f, length, 0.32f, 0.28f, 0.20f)
+        // Compacted coal ballast bed, darker and less uniform
+        mb.appendBox(0f, -0.03f, 0f, railSpacing + 1.86f, 0.11f, length, 0.1f, 0.1f, 0.11f)
+        mb.appendBox(-(railSpacing * 0.86f), 0.01f, 0f, 0.7f, 0.12f, length, 0.09f, 0.09f, 0.1f)
+        mb.appendBox((railSpacing * 0.86f), 0.01f, 0f, 0.7f, 0.12f, length, 0.09f, 0.09f, 0.1f)
 
-        // Ultra-dense gravel — 3x more rocks with high visibility colors
-        val chunkCount = (length * 12f).toInt().coerceAtLeast(96)
+        // Realistic ballast mix: 70% small, 20% medium, 10% large
+        val chunkCount = (length * 11f).toInt().coerceAtLeast(88)
         val gravelColors = arrayOf(
-            floatArrayOf(0.52f, 0.46f, 0.36f),   // light limestone
-            floatArrayOf(0.38f, 0.32f, 0.26f),   // tan sand
-            floatArrayOf(0.44f, 0.38f, 0.30f),   // medium gray
-            floatArrayOf(0.48f, 0.44f, 0.34f),   // warm gray
-            floatArrayOf(0.14f, 0.14f, 0.15f),   // dark coal
-            floatArrayOf(0.46f, 0.40f, 0.32f),   // sandy tan
-            floatArrayOf(0.50f, 0.44f, 0.34f),   // light gray
-            floatArrayOf(0.12f, 0.12f, 0.13f)    // coal black
+            floatArrayOf(0.09f, 0.09f, 0.1f),
+            floatArrayOf(0.12f, 0.12f, 0.13f),
+            floatArrayOf(0.08f, 0.08f, 0.09f),
+            floatArrayOf(0.14f, 0.14f, 0.16f),
+            floatArrayOf(0.1f, 0.1f, 0.11f),
+            floatArrayOf(0.11f, 0.1f, 0.09f)
         )
         for (i in 0 until chunkCount) {
             val ratio = i.toFloat() / chunkCount.toFloat()
             val z = -halfLen + ratio * length
             val phase = i.toFloat() * 0.42f
-            val baseRadius = 0.042f + (i % 7) * 0.022f
+            val sizeBand = i % 10
+            val baseRadius = when {
+                sizeBand < 7 -> 0.022f + (i % 3) * 0.006f   // 70% small
+                sizeBand < 9 -> 0.036f + (i % 2) * 0.008f   // 20% medium
+                else -> 0.054f + (i % 2) * 0.01f            // 10% large
+            }
             val col = gravelColors[i % gravelColors.size]
 
-            mb.appendSphere(kotlin.math.sin(phase) * (railSpacing * 0.35f), 0.045f, z,
+            mb.appendSphere(kotlin.math.sin(phase) * (railSpacing * 0.35f), 0.037f + (i % 3) * 0.004f, z,
                 baseRadius, col[0], col[1], col[2], 1f, 6, 7)
             val col2 = gravelColors[(i + 3) % gravelColors.size]
             mb.appendSphere(-(railSpacing * 0.86f) + kotlin.math.sin(phase * 1.5f) * 0.24f,
-                0.055f, z + 0.05f, baseRadius + 0.018f, col2[0], col2[1], col2[2], 1f, 6, 7)
+                0.042f + (i % 2) * 0.004f, z + 0.05f, baseRadius + 0.008f, col2[0], col2[1], col2[2], 1f, 6, 7)
             val col3 = gravelColors[(i + 5) % gravelColors.size]
-            mb.appendSphere( (railSpacing * 0.86f) + kotlin.math.cos(phase * 1.4f) * 0.25f,
-                0.055f, z - 0.05f, baseRadius + 0.018f, col3[0], col3[1], col3[2], 1f, 6, 7)
+            mb.appendSphere((railSpacing * 0.86f) + kotlin.math.cos(phase * 1.4f) * 0.25f,
+                0.042f + ((i + 1) % 2) * 0.004f, z - 0.05f, baseRadius + 0.008f, col3[0], col3[1], col3[2], 1f, 6, 7)
         }
         return mb.build()
     }
@@ -731,6 +735,24 @@ object Models3D {
                 rock3[0], rock3[1], rock3[2], 1f, 7)
         }
 
+        // Coal veins, wall cracks, and jagged protrusions to break boxy silhouettes
+        for (i in 0 until 6) {
+            val z = -depth * 0.42f + i * (depth * 0.16f)
+            val y = 0.9f + (i % 4) * 0.72f
+            mb.appendBox(-halfW + 0.58f, y, z, 0.04f, 0.34f + (i % 2) * 0.14f, 0.82f, 0.03f, 0.03f, 0.04f)
+            mb.appendBox(halfW - 0.58f, y + 0.18f, z - 0.2f, 0.04f, 0.28f + (i % 3) * 0.1f, 0.72f, 0.03f, 0.03f, 0.04f)
+        }
+        for (i in 0 until 8) {
+            val z = -depth * 0.45f + i * (depth * 0.13f)
+            val y = 0.45f + (i % 5) * 0.58f
+            val leftInset = 0.32f + (i % 3) * 0.12f
+            val rightInset = 0.34f + ((i + 1) % 3) * 0.11f
+            mb.appendCone(-halfW + leftInset, y, z, 0.12f + (i % 2) * 0.04f, 0.38f, rock2[0], rock2[1], rock2[2], 1f, 7)
+            mb.appendCone(halfW - rightInset, y + 0.1f, z - 0.14f, 0.1f + (i % 2) * 0.05f, 0.34f, rock1[0], rock1[1], rock1[2], 1f, 7)
+        }
+        mb.appendBox(-halfW + 0.52f, 1.8f, depth * 0.18f, 0.02f, 1.2f, 1.3f, 0.02f, 0.02f, 0.03f)
+        mb.appendBox(halfW - 0.5f, 2.2f, -depth * 0.12f, 0.02f, 1.0f, 1.1f, 0.02f, 0.02f, 0.03f)
+
         return mb.build()
     }
 
@@ -830,12 +852,15 @@ object Models3D {
 
     fun createDustMoteCluster(): Mesh {
         val mb = MeshBuilder()
-        mb.appendSphere(-0.12f, 1.25f, 0f, 0.05f, 0.3f, 0.3f, 0.32f, 1f, 6, 7)
-        mb.appendSphere(0.08f, 1.42f, 0.1f, 0.035f, 0.28f, 0.28f, 0.3f, 1f, 6, 7)
-        mb.appendSphere(0f, 1.32f, -0.1f, 0.03f, 0.22f, 0.22f, 0.24f, 1f, 6, 7)
-        mb.appendSphere(-0.18f, 1.1f, -0.08f, 0.028f, 0.24f, 0.24f, 0.26f, 1f, 6, 7)
-        mb.appendSphere(0.16f, 1.2f, -0.06f, 0.03f, 0.26f, 0.26f, 0.28f, 1f, 6, 7)
-        mb.appendSphere(0.03f, 1.55f, 0.04f, 0.025f, 0.34f, 0.34f, 0.36f, 1f, 6, 7)
+        // Cold airborne frost-dust
+        mb.appendSphere(-0.12f, 1.25f, 0f, 0.06f, 0.22f, 0.26f, 0.32f, 1f, 6, 7)
+        mb.appendSphere(0.08f, 1.42f, 0.1f, 0.045f, 0.24f, 0.29f, 0.36f, 1f, 6, 7)
+        mb.appendSphere(0f, 1.32f, -0.1f, 0.04f, 0.2f, 0.24f, 0.3f, 1f, 6, 7)
+        mb.appendSphere(-0.18f, 1.1f, -0.08f, 0.035f, 0.21f, 0.25f, 0.32f, 1f, 6, 7)
+        mb.appendSphere(0.16f, 1.2f, -0.06f, 0.04f, 0.23f, 0.28f, 0.35f, 1f, 6, 7)
+        mb.appendSphere(0.03f, 1.55f, 0.04f, 0.03f, 0.28f, 0.34f, 0.42f, 1f, 6, 7)
+        mb.appendSphere(-0.08f, 1.48f, 0.16f, 0.028f, 0.27f, 0.33f, 0.4f, 1f, 6, 7)
+        mb.appendSphere(0.19f, 1.34f, 0.02f, 0.026f, 0.24f, 0.3f, 0.38f, 1f, 6, 7)
         val mesh = mb.build()
         mesh.silhouetteMode = 2
         return mesh
@@ -843,10 +868,12 @@ object Models3D {
 
     fun createMineFogBank(): Mesh {
         val mb = MeshBuilder()
-        mb.appendSphere(0f, 0.85f, 0f, 0.54f, 0.18f, 0.18f, 0.2f, 1f, 8, 8)
-        mb.appendSphere(-0.36f, 0.72f, 0.16f, 0.4f, 0.16f, 0.16f, 0.18f, 1f, 8, 8)
-        mb.appendSphere(0.34f, 0.76f, -0.14f, 0.36f, 0.16f, 0.16f, 0.18f, 1f, 8, 8)
-        mb.appendSphere(0.12f, 1.04f, 0.08f, 0.28f, 0.2f, 0.2f, 0.22f, 1f, 8, 8)
+        // Low, cold mine haze
+        mb.appendSphere(0f, 0.78f, 0f, 0.66f, 0.16f, 0.2f, 0.28f, 1f, 8, 8)
+        mb.appendSphere(-0.42f, 0.68f, 0.16f, 0.5f, 0.15f, 0.19f, 0.27f, 1f, 8, 8)
+        mb.appendSphere(0.4f, 0.72f, -0.14f, 0.46f, 0.15f, 0.19f, 0.27f, 1f, 8, 8)
+        mb.appendSphere(0.14f, 0.98f, 0.08f, 0.36f, 0.18f, 0.23f, 0.32f, 1f, 8, 8)
+        mb.appendSphere(-0.08f, 0.92f, -0.22f, 0.3f, 0.17f, 0.22f, 0.31f, 1f, 8, 8)
         val mesh = mb.build()
         mesh.silhouetteMode = 2
         return mesh
@@ -1099,6 +1126,95 @@ object Models3D {
         mb.appendSphere(-0.82f, 0.76f, 0.28f, 0.04f, 0.24f, 0.24f, 0.26f, 1f, 6, 7)
         mb.appendSphere(0.82f,  0.76f, -0.28f, 0.04f, 0.24f, 0.24f, 0.26f, 1f, 6, 7)
         return mb.build()
+    }
+
+    fun createIceCrystalCluster(): Mesh {
+        val mb = MeshBuilder()
+        val iceA = floatArrayOf(0.38f, 0.62f, 0.86f)
+        val iceB = floatArrayOf(0.5f, 0.78f, 0.96f)
+        val iceC = floatArrayOf(0.3f, 0.54f, 0.8f)
+
+        mb.appendCone(0f, 0.42f, 0f, 0.12f, 0.82f, iceB[0], iceB[1], iceB[2], 1f, 8)
+        mb.appendCone(-0.22f, 0.34f, 0.08f, 0.09f, 0.66f, iceA[0], iceA[1], iceA[2], 1f, 8)
+        mb.appendCone(0.2f, 0.3f, -0.06f, 0.08f, 0.58f, iceC[0], iceC[1], iceC[2], 1f, 8)
+        mb.appendCone(0.06f, 0.25f, 0.2f, 0.07f, 0.48f, iceA[0], iceA[1], iceA[2], 1f, 8)
+        mb.appendSphere(0f, 0.06f, 0f, 0.22f, 0.1f, 0.14f, 0.2f, 1f, 8, 9)
+        mb.appendSphere(-0.18f, 0.04f, 0.12f, 0.14f, 0.08f, 0.11f, 0.16f, 1f, 7, 8)
+        val mesh = mb.build()
+        mesh.silhouetteMode = 2
+        return mesh
+    }
+
+    fun createCorruptedCrystalCluster(): Mesh {
+        val mb = MeshBuilder()
+        val cA = floatArrayOf(0.16f, 0.38f, 0.86f)
+        val cB = floatArrayOf(0.24f, 0.52f, 0.98f)
+        val cC = floatArrayOf(0.1f, 0.3f, 0.7f)
+        mb.appendCone(0f, 0.56f, 0f, 0.13f, 1.08f, cB[0], cB[1], cB[2], 1f, 8)
+        mb.appendCone(-0.26f, 0.4f, 0.16f, 0.09f, 0.8f, cA[0], cA[1], cA[2], 1f, 8)
+        mb.appendCone(0.22f, 0.36f, -0.12f, 0.08f, 0.72f, cC[0], cC[1], cC[2], 1f, 8)
+        mb.appendCone(0.1f, 0.3f, 0.24f, 0.08f, 0.62f, cA[0], cA[1], cA[2], 1f, 8)
+        mb.appendSphere(0f, 0.08f, 0f, 0.24f, 0.05f, 0.08f, 0.14f, 1f, 8, 9)
+        val mesh = mb.build()
+        mesh.silhouetteMode = 2
+        return mesh
+    }
+
+    fun createSnowDriftPatch(): Mesh {
+        val mb = MeshBuilder()
+        mb.appendSphere(0f, 0.1f, 0f, 0.62f, 0.84f, 0.9f, 0.97f, 1f, 9, 10)
+        mb.appendSphere(-0.38f, 0.08f, 0.22f, 0.42f, 0.82f, 0.88f, 0.95f, 1f, 8, 9)
+        mb.appendSphere(0.42f, 0.07f, -0.2f, 0.38f, 0.8f, 0.86f, 0.94f, 1f, 8, 9)
+        mb.appendSphere(0.12f, 0.16f, 0.06f, 0.26f, 0.9f, 0.94f, 0.98f, 1f, 8, 9)
+        return mb.build()
+    }
+
+    fun createFrozenPuddlePatch(): Mesh {
+        val mb = MeshBuilder()
+        mb.appendBox(0f, 0.01f, 0f, 1.2f, 0.02f, 0.92f, 0.48f, 0.66f, 0.82f, 1f)
+        mb.appendBox(0.18f, 0.015f, 0.24f, 0.42f, 0.02f, 0.24f, 0.68f, 0.82f, 0.94f, 1f)
+        mb.appendBox(-0.2f, 0.015f, -0.18f, 0.34f, 0.02f, 0.2f, 0.62f, 0.78f, 0.9f, 1f)
+        val mesh = mb.build()
+        mesh.silhouetteMode = 2
+        return mesh
+    }
+
+    fun createIceMountainFacade(): Mesh {
+        val mb = MeshBuilder()
+        val iceA = floatArrayOf(0.28f, 0.44f, 0.64f)
+        val iceB = floatArrayOf(0.38f, 0.56f, 0.76f)
+        mb.appendCone(0f, 2.1f, 0f, 2.4f, 4.4f, iceA[0], iceA[1], iceA[2], 1f, 12)
+        mb.appendCone(-1.6f, 1.6f, 0.7f, 1.5f, 3.2f, iceB[0], iceB[1], iceB[2], 1f, 10)
+        mb.appendCone(1.7f, 1.5f, -0.8f, 1.6f, 3.0f, iceB[0], iceB[1], iceB[2], 1f, 10)
+        mb.appendBox(0f, 0.36f, 0f, 5.8f, 0.72f, 3.2f, 0.32f, 0.44f, 0.6f)
+        mb.appendBox(0f, 1.1f, 0f, 2.2f, 1.6f, 1.2f, 0.14f, 0.18f, 0.24f)
+        return mb.build()
+    }
+
+    fun createMineEntranceSignAku(): Mesh {
+        val mb = MeshBuilder()
+        val wood = floatArrayOf(0.29f, 0.2f, 0.13f)
+        mb.appendCylinder(-1.25f, 0.86f, 0f, 0.08f, 1.72f, wood[0], wood[1], wood[2], segments = 7)
+        mb.appendCylinder(1.25f, 0.86f, 0f, 0.08f, 1.72f, wood[0], wood[1], wood[2], segments = 7)
+        mb.appendBox(0f, 1.42f, 0f, 2.9f, 0.88f, 0.12f, 0.24f, 0.17f, 0.11f)
+        mb.appendBox(0f, 1.42f, 0.06f, 2.74f, 0.74f, 0.04f, 0.18f, 0.13f, 0.09f)
+        // Carved Aku mark and stylized sign strokes
+        mb.appendCone(0f, 1.48f, 0.08f, 0.22f, 0.24f, 0.08f, 0.04f, 0.04f, 1f, 7)
+        mb.appendBox(0f, 1.36f, 0.08f, 0.62f, 0.05f, 0.02f, 0.08f, 0.04f, 0.04f)
+        mb.appendBox(-0.62f, 1.58f, 0.08f, 0.34f, 0.05f, 0.02f, 0.08f, 0.04f, 0.04f)
+        mb.appendBox(0.62f, 1.58f, 0.08f, 0.34f, 0.05f, 0.02f, 0.08f, 0.04f, 0.04f)
+        return mb.build()
+    }
+
+    fun createIcicleHazardCluster(): Mesh {
+        val mb = MeshBuilder()
+        val ice = floatArrayOf(0.56f, 0.78f, 0.95f)
+        mb.appendCone(0f, 1.62f, 0f, 0.08f, 0.92f, ice[0], ice[1], ice[2], 1f, 8)
+        mb.appendCone(-0.24f, 1.68f, 0.14f, 0.06f, 0.74f, ice[0], ice[1], ice[2], 1f, 8)
+        mb.appendCone(0.2f, 1.72f, -0.12f, 0.05f, 0.62f, ice[0], ice[1], ice[2], 1f, 8)
+        val mesh = mb.build()
+        mesh.silhouetteMode = 2
+        return mesh
     }
 
     private fun mergeMeshes(first: Mesh, second: Mesh): Mesh {

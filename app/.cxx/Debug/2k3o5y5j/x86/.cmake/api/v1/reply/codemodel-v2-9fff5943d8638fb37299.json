@@ -39,7 +39,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "main::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-main-Debug-9f4b48f88798647dfefb.json",
+					"jsonFile" : "target-main-Debug-fd973177916f66927df0.json",
 					"name" : "main",
 					"projectIndex" : 0
 				}
@@ -49,7 +49,7 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/arm64-v8a",
+		"build" : "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/x86",
 		"source" : "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/src/main/cpp"
 	},
 	"version" : 

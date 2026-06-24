@@ -1,4 +1,14 @@
 # ninja log v5
-60	92	1782278727266057036	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so	80d922865af285d7
-0	59	1782278727234482429	CMakeFiles/main.dir/game_main.cpp.o	ab7b4e2737492df2
-1	235	1782278997120414759	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so	4b1a78e932644f3f
+257	403	1782281088722446878	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so	4b1a78e932644f3f
+1	257	1782281088578657270	CMakeFiles/main.dir/game_main.cpp.o	ab7b4e2737492df2
+0	30	1782281248342481440	build.ninja	1de86b83b28a87d4
+0	6	0	clean	fc2343633bf3679f
+1	228	1782281248932275734	CMakeFiles/main.dir/game_main.cpp.o	ab7b4e2737492df2
+228	358	1782281249060269012	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so	b64605d55d0c0ed
+0	5	0	clean	fc2343633bf3679f
+0	5	0	clean	fc2343633bf3679f
+1	508	1782281321064509899	CMakeFiles/main.dir/game_main.cpp.o	ab7b4e2737492df2
+508	694	1782281321248353024	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so	b64605d55d0c0ed
+0	6	0	clean	fc2343633bf3679f
+0	275	1782282762116270085	CMakeFiles/main.dir/game_main.cpp.o	ab7b4e2737492df2
+276	433	1782282762272239322	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so	b64605d55d0c0ed

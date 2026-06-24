@@ -67,7 +67,7 @@ build CMakeFiles/main.dir/game_main.cpp.o: CXX_COMPILER__main_Debug /Users/venga
 
 build /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86_64/libmain.so: CXX_SHARED_LIBRARY_LINKER__main_Debug CMakeFiles/main.dir/game_main.cpp.o | /Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/libs/android.x86_64/libgame-activity_static.a
   LANGUAGE_COMPILE_FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info
-  LINK_FLAGS = -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments
+  LINK_FLAGS = -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384
   LINK_LIBRARIES = -landroid  -llog  -Wl,--whole-archive  /Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/libs/android.x86_64/libgame-activity_static.a  -Wl,--no-whole-archive  -latomic -lm
   OBJECT_DIR = CMakeFiles/main.dir
   POST_BUILD = :

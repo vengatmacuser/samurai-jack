@@ -71,6 +71,7 @@ class Shader {
             // Visual effects uniforms
             uniform int uSilhouetteMode;    // 0 = Normal, 1 = Black silhouette (Jack), 2 = Glow eyes/blade, 3 = Textured background, 4 = Textured character
             uniform float uHitFlashRed;     // 0.0 = normal, 1.0 = full red flash (damage)
+            uniform float uCharacterBoost;  // Extra visibility boost for main character in dark stages
 
             uniform sampler2D uTexture;
 
@@ -146,6 +147,9 @@ class Shader {
                 // Combine lights
                 vec3 finalLight = dirDiffuseColor + pointDiffuseColor;
                 vec4 litColor = vec4(baseColor.rgb * finalLight, baseColor.a);
+                if (uCharacterBoost > 0.0) {
+                    litColor.rgb = litColor.rgb * (1.0 + uCharacterBoost) + vec3(0.08, 0.08, 0.1) * uCharacterBoost;
+                }
 
                 // 4. Hit Flash Damage overlay
                 if (uHitFlashRed > 0.0) {

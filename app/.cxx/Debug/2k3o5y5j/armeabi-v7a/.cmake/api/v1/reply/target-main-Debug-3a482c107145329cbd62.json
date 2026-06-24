@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/arm64-v8a/libmain.so"
+			"path" : "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libmain.so"
 		}
 	],
 	"backtrace" : 1,
@@ -11,6 +11,7 @@
 		"commands" : 
 		[
 			"add_library",
+			"target_link_options",
 			"target_link_libraries"
 		],
 		"files" : 
@@ -31,7 +32,13 @@
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 13,
+				"line" : 15,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 23,
 				"parent" : 0
 			}
 		]
@@ -42,7 +49,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC"
+					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC"
 				}
 			],
 			"defines" : 
@@ -54,7 +61,7 @@
 			"includes" : 
 			[
 				{
-					"backtrace" : 2,
+					"backtrace" : 3,
 					"isSystem" : true,
 					"path" : "/Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/include"
 				}
@@ -81,26 +88,36 @@
 			},
 			{
 				"backtrace" : 2,
+				"fragment" : "-Wl,-z,max-page-size=16384",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-Wl,-z,common-page-size=16384",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 3,
 				"fragment" : "-landroid",
 				"role" : "libraries"
 			},
 			{
-				"backtrace" : 2,
+				"backtrace" : 3,
 				"fragment" : "-llog",
 				"role" : "libraries"
 			},
 			{
-				"backtrace" : 2,
+				"backtrace" : 3,
 				"fragment" : "-Wl,--whole-archive",
 				"role" : "libraries"
 			},
 			{
-				"backtrace" : 2,
-				"fragment" : "/Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/libs/android.arm64-v8a/libgame-activity_static.a",
+				"backtrace" : 3,
+				"fragment" : "/Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/libs/android.armeabi-v7a/libgame-activity_static.a",
 				"role" : "libraries"
 			},
 			{
-				"backtrace" : 2,
+				"backtrace" : 3,
 				"fragment" : "-Wl,--no-whole-archive",
 				"role" : "libraries"
 			},

@@ -18,17 +18,17 @@ object Stages {
     val stagesList = listOf(
         StageConfig(
             stageNumber = 1,
-            title = "Frosthollow Mine",
-            subtitle = "The Frozen Tomb",
-            objective = "Cross the cold abandoned mine deep in the northern mountains.",
+            title = "Aku's Crystal Mine",
+            subtitle = "Antarctic Opening",
+            objective = "Enter Aku's frozen mine and survive the descent from blizzard-ridden ice tunnels into corrupted crystal caverns.",
             bgColor = floatArrayOf(0.05f, 0.08f, 0.15f),
-            fogColor = floatArrayOf(0.12f, 0.11f, 0.1f),
-            fogDensity = 0.052f,
+            fogColor = floatArrayOf(0.1f, 0.14f, 0.18f),
+            fogDensity = 0.067f,
             groundColor = floatArrayOf(0.2f, 0.25f, 0.3f),
             dialogs = listOf(
-                "Aku: The freezing depths of Frosthollow Mine shall be your tomb, Samurai!",
-                "Jack: My spirit burns warmer than any fire, Aku. I will traverse these frozen gates!",
-                "Narrator: The wooden bridge is icy. Proceed with caution."
+                "Aku: Welcome to my crystal mine, Samurai. Let the Antarctic winds bury your courage.",
+                "Jack: I will cut through ice, darkness, and corruption alike until your evil is ended.",
+                "Narrator: Snowstorms howl behind him as the mine swallows all light."
             ),
             enemyCount = 3,
             bossType = "None"

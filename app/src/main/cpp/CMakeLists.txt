@@ -10,6 +10,16 @@ add_library(
     game_main.cpp
 )
 
+if (ANDROID)
+    # Ensure generated ELF segments are 16 KB page-size compatible on newer Android devices.
+    target_link_options(
+        main
+        PRIVATE
+        "-Wl,-z,max-page-size=16384"
+        "-Wl,-z,common-page-size=16384"
+    )
+endif()
+
 target_link_libraries(
     main
     android

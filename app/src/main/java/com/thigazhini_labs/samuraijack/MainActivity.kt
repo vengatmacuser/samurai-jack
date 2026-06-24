@@ -62,10 +62,12 @@ class MainActivity : GameActivity(), SensorEventListener {
     var gameState by mutableStateOf(GameState.SPLASH)
     var currentStageIndex by mutableIntStateOf(0)
     var unlockedStageCount by mutableIntStateOf(13)
+    var isStage1InsideMine by mutableStateOf(false)
     
     // Player statistics
     var playerHealth by mutableFloatStateOf(100f)
     var playerSwordEnergy by mutableFloatStateOf(0f)
+    var isHealthRegenActive by mutableStateOf(false)
     var enemiesRemaining by mutableIntStateOf(3)
     var playerCoins by mutableIntStateOf(245)
     var playerCrystals by mutableIntStateOf(12)
@@ -93,6 +95,7 @@ class MainActivity : GameActivity(), SensorEventListener {
     private val laserMeshes = mutableListOf<Mesh>()
     private val environmentMeshes = mutableListOf<Mesh>()
     private val mineLanternAnchors = mutableListOf<Vector3>()
+    private val mineCrystalAnchors = mutableListOf<Vector3>()
     private val mineObstacleCircles = mutableListOf<MineObstacle>()
     private var groundMesh: Mesh? = null
     private var bossMesh: Mesh? = null
@@ -112,6 +115,7 @@ class MainActivity : GameActivity(), SensorEventListener {
     private var specialFlashActive = false
     private var specialFlashTime = 0f
     private var bossHitsRemaining = 5
+    private var lastDamageTimestampMs = 0L
 
     // Touch gesture tracking variables
     private var touchStartX = 0f
@@ -147,7 +151,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                 GameState.STAGE_SELECT -> R.drawable.bg_map
                 else -> {
                     when (currentStageIndex) {
-                        0 -> R.drawable.bg_frosthollow // Stage 1: Frosthollow Mine
+                        0 -> if (isStage1InsideMine) R.drawable.bg_frosthollow else R.drawable.bg_port
                         1 -> R.drawable.bg_forest      // Stage 2: The Young Prince
                         2 -> R.drawable.bg_jungle      // Stage 3: Journey Across the World
                         3 -> R.drawable.bg_village     // Stage 4: The Sacred Sword
@@ -193,6 +197,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                     unlockedStageCount = unlockedStageCount,
                     playerHealth = playerHealth,
                     playerSwordEnergy = playerSwordEnergy,
+                    isHealthRegenActive = isHealthRegenActive,
                     enemiesRemaining = enemiesRemaining,
                     typedText = typedText,
                     isTextFullyTyped = isTextFullyTyped,
@@ -414,6 +419,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                 // Static Jack loaded on background thread
                 val jack = Models3D.loadObj(this@MainActivity, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
                 jack.position = Vector3(0f, 0.4f, 0f)
+                jack.isHero = true
                 subList.add(jack)
                 subList
             }
@@ -450,8 +456,11 @@ class MainActivity : GameActivity(), SensorEventListener {
         val stage = Stages.stagesList[index]
         playerHealth = 100f
         playerSwordEnergy = 0f
+        isHealthRegenActive = false
+        lastDamageTimestampMs = System.currentTimeMillis()
+        isStage1InsideMine = index != 0
         enemiesRemaining = 0
-        jackPos = Vector3(0f, 0.4f, 0f)
+        jackPos = if (index == 0) Vector3(0f, 0.4f, -120f) else Vector3(0f, 0.4f, 0f)
         jackVelY = 0f
         isJumping = false
         jackState = "Idle"
@@ -460,6 +469,7 @@ class MainActivity : GameActivity(), SensorEventListener {
         laserMeshes.clear()
         environmentMeshes.clear()
         mineLanternAnchors.clear()
+        mineCrystalAnchors.clear()
         mineObstacleCircles.clear()
 
         val list = withContext(Dispatchers.IO) {
@@ -468,7 +478,7 @@ class MainActivity : GameActivity(), SensorEventListener {
             // 1. Create Ground (use custom 3D mesh for Stage 1 Frosthollow Mine)
             val gc = stage.groundColor
             val gMesh = if (index == 0) {
-                Models3D.createGround(16f, 124f, 0.06f, 0.06f, 0.07f)
+                Models3D.createGround(18f, 420f, 0.06f, 0.06f, 0.07f)
             } else {
                 Models3D.createGround(12f, 80f, gc[0], gc[1], gc[2])
             }
@@ -478,6 +488,8 @@ class MainActivity : GameActivity(), SensorEventListener {
             // 2. Create Jack
             val normal = Models3D.loadObj(this@MainActivity, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
             val attacking = Models3D.loadObj(this@MainActivity, "samurai_model.obj", "samurai_model.mtl", scaleMultiplier = 2.0f, yOffset = 0.715f)
+            normal.isHero = true
+            attacking.isHero = true
             jackMeshNormal = normal
             jackMeshAttacking = attacking
             jackMesh = normal
@@ -492,7 +504,95 @@ class MainActivity : GameActivity(), SensorEventListener {
             subList.add(sky)
 
             if (index == 0) {
-                for (z in -12..84 step 8) {
+                // Long Antarctic approach path to the mine entrance
+                for (zExt in -140..-20 step 10) {
+                    val zExtF = zExt.toFloat()
+                    val extPathX = getPathX(zExtF)
+
+                    val leftCliff = Models3D.createIceMountainFacade()
+                    leftCliff.position = Vector3(extPathX - 7.6f, 0f, zExtF)
+                    leftCliff.rotation.y = 26f
+                    leftCliff.scale = Vector3(1.05f, 1.15f, 1.05f)
+                    environmentMeshes.add(leftCliff)
+                    subList.add(leftCliff)
+
+                    val rightCliff = Models3D.createIceMountainFacade()
+                    rightCliff.position = Vector3(extPathX + 7.6f, 0f, zExtF + 1.5f)
+                    rightCliff.rotation.y = -24f
+                    rightCliff.scale = Vector3(0.98f, 1.08f, 0.98f)
+                    environmentMeshes.add(rightCliff)
+                    subList.add(rightCliff)
+
+                    val driftA = Models3D.createSnowDriftPatch()
+                    driftA.position = Vector3(extPathX - 2.7f, 0f, zExtF - 1.8f)
+                    driftA.scale = Vector3(1.1f, 1.0f, 1.1f)
+                    environmentMeshes.add(driftA)
+                    subList.add(driftA)
+
+                    val driftB = Models3D.createSnowDriftPatch()
+                    driftB.position = Vector3(extPathX + 2.8f, 0f, zExtF + 1.6f)
+                    driftB.scale = Vector3(0.95f, 0.9f, 0.95f)
+                    environmentMeshes.add(driftB)
+                    subList.add(driftB)
+
+                    if (zExt % 20 == 0) {
+                        val warning = Models3D.createWarningSign()
+                        warning.position = Vector3(extPathX + if ((zExt / 20) % 2 == 0) 3.6f else -3.6f, 0f, zExtF + 0.8f)
+                        warning.rotation.y = if ((zExt / 20) % 2 == 0) -18f else 18f
+                        environmentMeshes.add(warning)
+                        subList.add(warning)
+                    }
+
+                    if (zExt % 30 == 0) {
+                        val abandonedCamp = Models3D.createWoodenPlatform()
+                        abandonedCamp.position = Vector3(extPathX + if ((zExt / 10) % 2 == 0) 4.7f else -4.7f, 0f, zExtF - 0.6f)
+                        abandonedCamp.rotation.y = if ((zExt / 10) % 2 == 0) -32f else 30f
+                        environmentMeshes.add(abandonedCamp)
+                        subList.add(abandonedCamp)
+
+                        val campProps = Models3D.createMiningSupplyCluster()
+                        campProps.position = Vector3(extPathX + if ((zExt / 10) % 2 == 0) 4.35f else -4.35f, 0f, zExtF + 0.5f)
+                        environmentMeshes.add(campProps)
+                        subList.add(campProps)
+                    }
+
+                    if (zExt % 20 == 0) {
+                        val hiddenCrystal = Models3D.createIceCrystalCluster()
+                        hiddenCrystal.position = Vector3(extPathX + if ((zExt / 20) % 2 == 0) 5.3f else -5.3f, 0f, zExtF - 1.4f)
+                        hiddenCrystal.scale = Vector3(0.82f, 0.9f, 0.82f)
+                        environmentMeshes.add(hiddenCrystal)
+                        subList.add(hiddenCrystal)
+                    }
+
+                    val blizzardFog = Models3D.createMineFogBank()
+                    blizzardFog.position = Vector3(extPathX + if ((zExt / 10) % 2 == 0) -0.9f else 0.9f, 0f, zExtF)
+                    blizzardFog.scale = Vector3(0.9f, 0.86f, 0.9f)
+                    environmentMeshes.add(blizzardFog)
+                    subList.add(blizzardFog)
+
+                    val windSnow = Models3D.createDustMoteCluster()
+                    windSnow.position = Vector3(extPathX + if ((zExt / 10) % 2 == 0) 1.4f else -1.4f, 0f, zExtF + 1.0f)
+                    windSnow.scale = Vector3(1.1f, 1.1f, 1.1f)
+                    environmentMeshes.add(windSnow)
+                    subList.add(windSnow)
+                }
+
+                for (zTrack in -124..-24 step 8) {
+                    val zTrackF = zTrack.toFloat()
+                    val tpX = getPathX(zTrackF)
+                    val rail = Models3D.createMiningRailSection(length = 8f, sleeperCount = 6)
+                    rail.position = Vector3(tpX, 0f, zTrackF)
+                    environmentMeshes.add(rail)
+                    subList.add(rail)
+
+                    val driftOverTrack = Models3D.createSnowDriftPatch()
+                    driftOverTrack.position = Vector3(tpX + if ((zTrack / 8) % 2 == 0) -0.55f else 0.55f, 0f, zTrackF + 0.6f)
+                    driftOverTrack.scale = Vector3(0.75f, 0.72f, 0.75f)
+                    environmentMeshes.add(driftOverTrack)
+                    subList.add(driftOverTrack)
+                }
+
+                for (z in -12..1500 step 12) {
                     val zF = z.toFloat()
                     val pathX = getPathX(zF)
                     val yaw = getPathYaw(zF)
@@ -517,11 +617,79 @@ class MainActivity : GameActivity(), SensorEventListener {
                     subList.add(railSection)
                 }
 
-                for (zArch in -12..84 step 6) {
+                // Mountain base and entrance approach
+                val mountainCore = Models3D.createIceMountainFacade()
+                mountainCore.position = Vector3(getPathX(-18f) - 10.8f, 0f, -18f)
+                mountainCore.rotation.y = 18f
+                mountainCore.scale = Vector3(1.75f, 2.05f, 1.85f)
+                environmentMeshes.add(mountainCore)
+                subList.add(mountainCore)
+
+                for (zExt in -36..-8 step 8) {
+                    val zExtF = zExt.toFloat()
+                    val px = getPathX(zExtF)
+                    val leftGlacier = Models3D.createIceMountainFacade()
+                    leftGlacier.position = Vector3(px - 6.0f, 0f, zExtF - 1.2f)
+                    leftGlacier.rotation.y = 22f
+                    leftGlacier.scale = Vector3(0.92f, 0.95f, 0.9f)
+                    environmentMeshes.add(leftGlacier)
+                    subList.add(leftGlacier)
+
+                    val rightGlacier = Models3D.createIceMountainFacade()
+                    rightGlacier.position = Vector3(px + 6.0f, 0f, zExtF + 1.2f)
+                    rightGlacier.rotation.y = -22f
+                    rightGlacier.scale = Vector3(0.88f, 0.92f, 0.88f)
+                    environmentMeshes.add(rightGlacier)
+                    subList.add(rightGlacier)
+                }
+
+                val mineSign = Models3D.createMineEntranceSignAku()
+                mineSign.position = Vector3(getPathX(-5f) - 3.55f, 0f, -5f)
+                mineSign.rotation.y = 10f
+                environmentMeshes.add(mineSign)
+                subList.add(mineSign)
+
+                val entranceFrame = Models3D.createMineSupportFrame(width = 6.4f, height = 4.5f, depth = 0.82f)
+                entranceFrame.position = Vector3(getPathX(-2f), 0f, -2f)
+                environmentMeshes.add(entranceFrame)
+                subList.add(entranceFrame)
+
+                val frozenCart = Models3D.createMineCartDetailed(overturned = false, filled = false, damaged = true)
+                frozenCart.position = Vector3(getPathX(-6f) + 2.3f, 0f, -6f)
+                frozenCart.rotation.y = -18f
+                environmentMeshes.add(frozenCart)
+                subList.add(frozenCart)
+
+                val entranceSupplies = Models3D.createMiningSupplyCluster()
+                entranceSupplies.position = Vector3(getPathX(-4f) - 3.2f, 0f, -4f)
+                entranceSupplies.rotation.y = 18f
+                environmentMeshes.add(entranceSupplies)
+                subList.add(entranceSupplies)
+
+                val entranceLantern = Models3D.createLanternStand(1f, 0.72f, 0.24f)
+                entranceLantern.position = Vector3(getPathX(-2f) + 3.05f, 0f, -2.4f)
+                environmentMeshes.add(entranceLantern)
+                subList.add(entranceLantern)
+                mineLanternAnchors.add(Vector3(getPathX(-2f) + 3.05f, 1.0f, -2.4f))
+
+                for (zEntrance in listOf(-10f, -6f, -2f)) {
+                    val pX = getPathX(zEntrance)
+                    val entranceIcicles = Models3D.createIcicleHazardCluster()
+                    entranceIcicles.position = Vector3(pX + if (zEntrance < 0f) -2.35f else 2.35f, 0f, zEntrance - 0.15f)
+                    environmentMeshes.add(entranceIcicles)
+                    subList.add(entranceIcicles)
+
+                    val drift = Models3D.createSnowDriftPatch()
+                    drift.position = Vector3(pX + if (zEntrance < 0f) 2.8f else -2.8f, 0f, zEntrance + 0.5f)
+                    environmentMeshes.add(drift)
+                    subList.add(drift)
+                }
+
+                for (zArch in -12..1500 step 18) {
                     val zF = zArch.toFloat()
                     val pathX = getPathX(zF)
 
-                    if (zArch % 12 == 0) {
+                    if (zArch % 36 == 0) {
                         val warmLanternL = Models3D.createMineLanternGlow(0.98f, 0.78f, 0.34f)
                         val leftLanternPos = Vector3(pathX - 2.62f, 0f, zF + 0.35f)
                         warmLanternL.position = leftLanternPos
@@ -541,6 +709,8 @@ class MainActivity : GameActivity(), SensorEventListener {
                 for (z in -10..84 step 4) {
                     val zF = z.toFloat()
                     val pathX = getPathX(zF)
+                    val coldFactor = ((22f - zF) / 22f).coerceIn(0f, 1f)
+                    val corruptionFactor = ((zF - 42f) / 42f).coerceIn(0f, 1f)
                     val leftPile = Models3D.createCoalPile(radius = 0.72f, heightScale = 1.22f)
                     leftPile.position = Vector3(pathX - 3.2f, 0f, zF + 0.5f)
                     environmentMeshes.add(leftPile)
@@ -551,30 +721,45 @@ class MainActivity : GameActivity(), SensorEventListener {
                     environmentMeshes.add(rightPile)
                     subList.add(rightPile)
 
-                    val centerChunks = Models3D.createCoalDebrisPatch(size = 1.36f)
+                    val centerChunks = Models3D.createCoalDebrisPatch(size = 0.98f)
                     centerChunks.position = Vector3(pathX + if ((z / 4) % 2 == 0) 0.4f else -0.35f, 0f, zF - 0.2f)
                     environmentMeshes.add(centerChunks)
                     subList.add(centerChunks)
 
                     if (z % 8 == 0) {
-                        val debris = Models3D.createCoalDebrisPatch(size = 1.4f)
+                        val debris = Models3D.createCoalDebrisPatch(size = 0.92f)
                         debris.position = Vector3(pathX + if ((z / 4) % 2 == 0) 1.6f else -1.6f, 0f, zF)
                         environmentMeshes.add(debris)
                         subList.add(debris)
                     }
 
-                    if (z % 8 == 0) {
+                    if (z % 6 == 0) {
+                        val fineBallast = Models3D.createCoalDebrisPatch(size = 0.74f)
+                        fineBallast.position = Vector3(pathX + if ((z / 6) % 2 == 0) 0.24f else -0.24f, 0f, zF + 0.65f)
+                        environmentMeshes.add(fineBallast)
+                        subList.add(fineBallast)
+                    }
+
+                    if (z % 4 == 0 && zF <= 44f) {
                         val dust = Models3D.createDustMoteCluster()
                         dust.position = Vector3(pathX + if ((z / 12) % 2 == 0) 0.9f else -0.9f, 0f, zF + 1.1f)
                         environmentMeshes.add(dust)
                         subList.add(dust)
                     }
 
-                    if (z % 12 == 0) {
+                    if (z % 8 == 0 && zF <= 36f) {
                         val fog = Models3D.createMineFogBank()
                         fog.position = Vector3(pathX + if ((z / 8) % 2 == 0) 0.5f else -0.5f, 0f, zF + 0.6f)
                         environmentMeshes.add(fog)
                         subList.add(fog)
+                    }
+
+                    if (z % 8 == 0 && zF <= 36f) {
+                        val fogLayer = Models3D.createMineFogBank()
+                        fogLayer.position = Vector3(pathX + if ((z / 8) % 2 == 0) -0.95f else 0.95f, 0f, zF - 0.25f)
+                        fogLayer.scale = Vector3(0.78f, 0.74f, 0.78f)
+                        environmentMeshes.add(fogLayer)
+                        subList.add(fogLayer)
                     }
 
                     if (z % 12 == 0) {
@@ -589,6 +774,37 @@ class MainActivity : GameActivity(), SensorEventListener {
                         rubble.position = Vector3(pathX + if ((z / 8) % 2 == 0) 2.35f else -2.35f, 0f, zF - 0.8f)
                         environmentMeshes.add(rubble)
                         subList.add(rubble)
+                    }
+
+                    if (coldFactor > 0.1f && z % 8 == 0) {
+                        val snow = Models3D.createSnowDriftPatch()
+                        snow.position = Vector3(pathX + if ((z / 8) % 2 == 0) -1.8f else 1.8f, 0f, zF + 0.3f)
+                        snow.scale = Vector3(0.72f + coldFactor * 0.35f, 0.7f + coldFactor * 0.3f, 0.72f + coldFactor * 0.35f)
+                        environmentMeshes.add(snow)
+                        subList.add(snow)
+
+                        val icePatch = Models3D.createFrozenPuddlePatch()
+                        icePatch.position = Vector3(pathX + if ((z / 8) % 2 == 0) -0.68f else 0.68f, 0f, zF - 0.45f)
+                        icePatch.scale = Vector3(0.74f + coldFactor * 0.25f, 1f, 0.74f + coldFactor * 0.25f)
+                        environmentMeshes.add(icePatch)
+                        subList.add(icePatch)
+                    }
+
+                    if (corruptionFactor > 0.08f && z % 6 == 0) {
+                        val corruptedCrystal = Models3D.createCorruptedCrystalCluster()
+                        val side = if ((z / 6) % 2 == 0) 3.05f else -3.05f
+                        corruptedCrystal.position = Vector3(pathX + side, 0f, zF - 0.2f)
+                        corruptedCrystal.scale = Vector3(
+                            0.72f + corruptionFactor * 0.85f,
+                            0.75f + corruptionFactor * 0.95f,
+                            0.72f + corruptionFactor * 0.85f
+                        )
+                        corruptedCrystal.rotation.y = if (side > 0f) -20f else 20f
+                        environmentMeshes.add(corruptedCrystal)
+                        subList.add(corruptedCrystal)
+                        if (zF >= 46f) {
+                            mineCrystalAnchors.add(Vector3(pathX + side * 0.9f, 0.95f, zF - 0.15f))
+                        }
                     }
                 }
 
@@ -636,14 +852,14 @@ class MainActivity : GameActivity(), SensorEventListener {
                 environmentMeshes.add(supplyClusterB)
                 subList.add(supplyClusterB)
 
-                // Coal carts every ~20 m along walls (not blocking path)
-                for (zCart in listOf(8f, 20f, 38f, 48f, 60f)) {
+                // Coal carts distributed along side tracks/supports: empty, filled and broken variants
+                for (zCart in listOf(6f, 14f, 22f, 36f, 48f, 62f, 74f)) {
                     val cpX = getPathX(zCart)
-                    val side = if (zCart.toInt() % 40 == 8 || zCart.toInt() % 40 == 38 || zCart.toInt() % 40 == 0) 2.25f else -2.25f
+                    val side = if ((zCart.toInt() / 2) % 2 == 0) 2.95f else -2.95f
                     val cartV = Models3D.createMineCartDetailed(
-                        overturned = zCart.toInt() % 30 == 8,
-                        filled = zCart.toInt() % 20 != 0,
-                        damaged = zCart > 40f
+                        overturned = zCart == 22f || zCart == 62f,
+                        filled = zCart != 14f && zCart != 48f,
+                        damaged = zCart >= 36f
                     )
                     cartV.position = Vector3(cpX + side, 0f, zCart)
                     cartV.rotation.y = if (side > 0f) -15f else 15f
@@ -651,11 +867,26 @@ class MainActivity : GameActivity(), SensorEventListener {
                     subList.add(cartV)
                 }
 
-                // Ceiling lamps every 10 m — hang above the centre/sides for extra drama
-                for (zCl in 0..78 step 10) {
+                // Additional support-adjacent carts in the background to reinforce mine traffic
+                for (zCart in listOf(10f, 28f, 44f, 58f, 80f)) {
+                    val cpX = getPathX(zCart)
+                    val side = if ((zCart.toInt() / 10) % 2 == 0) -3.25f else 3.25f
+                    val supportCart = Models3D.createMineCartDetailed(
+                        overturned = false,
+                        filled = zCart % 20f != 0f,
+                        damaged = zCart >= 58f
+                    )
+                    supportCart.position = Vector3(cpX + side, 0f, zCart - 0.4f)
+                    supportCart.rotation.y = if (side > 0f) -24f else 22f
+                    environmentMeshes.add(supportCart)
+                    subList.add(supportCart)
+                }
+
+                // Ceiling lamps and warm route guidance through the full mine
+                for (zCl in 0..1500 step 24) {
                     val clF = zCl.toFloat()
                     val clPathX = getPathX(clF)
-                    val offsetX = when ((zCl / 10) % 3) { 0 -> 0f; 1 -> -1.2f; else -> 1.2f }
+                    val offsetX = when ((zCl / 24) % 3) { 0 -> 0f; 1 -> -1.2f; else -> 1.2f }
                     val lamp = Models3D.createCeilingLamp(0.98f, 0.74f, 0.26f)
                     lamp.position = Vector3(clPathX + offsetX, 0f, clF)
                     environmentMeshes.add(lamp)
@@ -663,7 +894,7 @@ class MainActivity : GameActivity(), SensorEventListener {
                     mineLanternAnchors.add(Vector3(clPathX + offsetX, 2.84f, clF))
                 }
 
-                for (zProp in -6..78 step 12) {
+                for (zProp in -6..1500 step 36) {
                     val zPropF = zProp.toFloat()
                     val propPathX = getPathX(zPropF)
                     val side = if ((zProp / 6) % 2 == 0) 3.35f else -3.35f
@@ -675,21 +906,276 @@ class MainActivity : GameActivity(), SensorEventListener {
                     subList.add(propCluster)
                 }
 
-                // ── ALL OBSTACLES REMOVED ──
+                // Mid/deep cave dressing and progression after first handcrafted section
+                for (zDeep in 96..1500 step 24) {
+                    val zDeepF = zDeep.toFloat()
+                    val deepPathX = getPathX(zDeepF)
+                    val depthFactor = ((zDeepF - 96f) / 1404f).coerceIn(0f, 1f)
+
+                    val debris = Models3D.createCoalDebrisPatch(size = 0.86f + depthFactor * 0.32f)
+                    debris.position = Vector3(deepPathX + if ((zDeep / 24) % 2 == 0) 0.7f else -0.7f, 0f, zDeepF)
+                    environmentMeshes.add(debris)
+                    subList.add(debris)
+
+                    if (zDeep % 48 == 0) {
+                        val rubble = Models3D.createMineRubbleMound()
+                        rubble.position = Vector3(deepPathX + if ((zDeep / 48) % 2 == 0) 2.2f else -2.2f, 0f, zDeepF - 0.8f)
+                        environmentMeshes.add(rubble)
+                        subList.add(rubble)
+                    }
+
+                    val crystal = Models3D.createCorruptedCrystalCluster()
+                    val crystalSide = if ((zDeep / 24) % 2 == 0) 3.1f else -3.1f
+                    crystal.position = Vector3(deepPathX + crystalSide, 0f, zDeepF + 0.2f)
+                    crystal.scale = Vector3(
+                        0.9f + depthFactor * 1.1f,
+                        1.0f + depthFactor * 1.2f,
+                        0.9f + depthFactor * 1.1f
+                    )
+                    crystal.rotation.y = if (crystalSide > 0f) -18f else 18f
+                    environmentMeshes.add(crystal)
+                    subList.add(crystal)
+                    mineCrystalAnchors.add(Vector3(deepPathX + crystalSide * 0.9f, 1.0f, zDeepF + 0.2f))
+
+                    if (zDeep % 72 == 0) {
+                        val fogDeep = Models3D.createMineFogBank()
+                        fogDeep.position = Vector3(deepPathX + if ((zDeep / 72) % 2 == 0) 0.55f else -0.55f, 0f, zDeepF + 0.5f)
+                        fogDeep.scale = Vector3(0.72f, 0.68f, 0.72f)
+                        environmentMeshes.add(fogDeep)
+                        subList.add(fogDeep)
+                    }
+                }
+
+                // Cold crystal formations near the entrance sections
+                for (zCrystal in -8..36 step 8) {
+                    val zCrystalF = zCrystal.toFloat()
+                    val crystalPathX = getPathX(zCrystalF)
+                    val side = if ((zCrystal / 8) % 2 == 0) 3.45f else -3.45f
+                    val crystal = Models3D.createIceCrystalCluster()
+                    crystal.position = Vector3(crystalPathX + side, 0f, zCrystalF + 0.2f)
+                    crystal.scale = Vector3(
+                        0.82f + (zCrystal % 3) * 0.08f,
+                        0.9f + (zCrystal % 4) * 0.06f,
+                        0.82f + (zCrystal % 3) * 0.08f
+                    )
+                    crystal.rotation.y = if (side > 0f) -18f else 18f
+                    environmentMeshes.add(crystal)
+                    subList.add(crystal)
+                }
+
+                // Mining equipment dressing
+                for (zEquip in listOf(4f, 18f, 30f, 42f, 54f, 68f)) {
+                    val eqPathX = getPathX(zEquip)
+                    val side = if ((zEquip.toInt() / 6) % 2 == 0) 3.6f else -3.6f
+
+                    val crates = Models3D.createCrateStack()
+                    crates.position = Vector3(eqPathX + side, 0f, zEquip)
+                    crates.rotation.y = if (side > 0f) -24f else 24f
+                    environmentMeshes.add(crates)
+                    subList.add(crates)
+
+                    val rope = Models3D.createRopeBundle()
+                    rope.position = Vector3(eqPathX + side * 0.88f, 0f, zEquip + 0.5f)
+                    environmentMeshes.add(rope)
+                    subList.add(rope)
+
+                    val lanternStand = Models3D.createLanternStand(0.96f, 0.72f, 0.3f)
+                    lanternStand.position = Vector3(eqPathX + side * 0.8f, 0f, zEquip - 0.55f)
+                    environmentMeshes.add(lanternStand)
+                    subList.add(lanternStand)
+                }
+
+                val addMineObstacle = { relX: Float, z: Float, radius: Float ->
+                    mineObstacleCircles.add(MineObstacle(relX, z, radius))
+                }
+
+                // Environmental traversal blockers with a clear bypass path
+                val lowBeamZ = 12f
+                val lowBeam = Models3D.createWoodenBarricade()
+                lowBeam.position = Vector3(getPathX(lowBeamZ) - 0.95f, 0f, lowBeamZ)
+                lowBeam.scale = Vector3(0.9f, 0.62f, 0.9f)
+                lowBeam.rotation.y = 10f
+                environmentMeshes.add(lowBeam)
+                subList.add(lowBeam)
+                addMineObstacle(-0.95f, lowBeamZ, 0.58f)
+
+                val slipperyIceZ = 16f
+                val slipperyIce = Models3D.createFrozenPuddlePatch()
+                slipperyIce.position = Vector3(getPathX(slipperyIceZ) + 0.85f, 0f, slipperyIceZ)
+                slipperyIce.scale = Vector3(1.22f, 1f, 1.15f)
+                environmentMeshes.add(slipperyIce)
+                subList.add(slipperyIce)
+                addMineObstacle(0.85f, slipperyIceZ, 0.64f)
+
+                val fallingIcicleZ = 24f
+                val icicleHazard = Models3D.createIcicleHazardCluster()
+                icicleHazard.position = Vector3(getPathX(fallingIcicleZ) + 0.1f, 0f, fallingIcicleZ)
+                icicleHazard.scale = Vector3(1.2f, 1.2f, 1.2f)
+                environmentMeshes.add(icicleHazard)
+                subList.add(icicleHazard)
+                addMineObstacle(0.1f, fallingIcicleZ, 0.52f)
+
+                val fallenTimberZ = 20f
+                val fallenTimber = Models3D.createCollapsedSupportDebris()
+                fallenTimber.position = Vector3(getPathX(fallenTimberZ) + 1.35f, 0f, fallenTimberZ)
+                fallenTimber.rotation.y = -28f
+                environmentMeshes.add(fallenTimber)
+                subList.add(fallenTimber)
+                addMineObstacle(1.35f, fallenTimberZ, 0.72f)
+
+                val brokenCartZ = 28f
+                val brokenCart = Models3D.createMineCartDetailed(overturned = true, filled = false, damaged = true)
+                brokenCart.position = Vector3(getPathX(brokenCartZ) - 1.05f, 0f, brokenCartZ)
+                brokenCart.rotation.y = 32f
+                brokenCart.rotation.z = 20f
+                environmentMeshes.add(brokenCart)
+                subList.add(brokenCart)
+                addMineObstacle(-1.05f, brokenCartZ, 0.66f)
+
+                val rockfallZ = 40f
+                val rockfall = Models3D.createRockfallPile()
+                rockfall.position = Vector3(getPathX(rockfallZ) + 0.95f, 0f, rockfallZ)
+                environmentMeshes.add(rockfall)
+                subList.add(rockfall)
+                addMineObstacle(0.95f, rockfallZ, 0.8f)
+
+                val swingTrapZ = 48f
+                val swingTrap = Models3D.createFallenBeam()
+                swingTrap.position = Vector3(getPathX(swingTrapZ), 1.25f, swingTrapZ)
+                swingTrap.rotation.z = 34f
+                swingTrap.rotation.y = 12f
+                environmentMeshes.add(swingTrap)
+                subList.add(swingTrap)
+                val swingChain = Models3D.createHangingRope(1.8f)
+                swingChain.position = Vector3(getPathX(swingTrapZ) - 0.2f, 1.7f, swingTrapZ - 0.2f)
+                environmentMeshes.add(swingChain)
+                subList.add(swingChain)
+                addMineObstacle(0f, swingTrapZ, 0.56f)
+
+                val collapseZ = 56f
+                val collapse = Models3D.createCollapsedSupportDebris()
+                collapse.position = Vector3(getPathX(collapseZ) + 1.2f, 0f, collapseZ)
+                collapse.rotation.y = 36f
+                environmentMeshes.add(collapse)
+                subList.add(collapse)
+                addMineObstacle(1.2f, collapseZ, 0.9f)
+
+                val narrowPassageZ = 60f
+                val narrowLeft = Models3D.createRockfallPile()
+                narrowLeft.position = Vector3(getPathX(narrowPassageZ) - 1.7f, 0f, narrowPassageZ)
+                environmentMeshes.add(narrowLeft)
+                subList.add(narrowLeft)
+                addMineObstacle(-1.7f, narrowPassageZ, 0.74f)
+
+                val narrowRight = Models3D.createRockfallPile()
+                narrowRight.position = Vector3(getPathX(narrowPassageZ) + 1.7f, 0f, narrowPassageZ + 0.25f)
+                environmentMeshes.add(narrowRight)
+                subList.add(narrowRight)
+                addMineObstacle(1.7f, narrowPassageZ + 0.25f, 0.74f)
+
+                val collapseRocks = Models3D.createRockfallPile()
+                collapseRocks.position = Vector3(getPathX(collapseZ) + 1.55f, 0f, collapseZ + 0.75f)
+                environmentMeshes.add(collapseRocks)
+                subList.add(collapseRocks)
+                addMineObstacle(1.55f, collapseZ + 0.75f, 0.7f)
+
+                val coalChokeZ = 64f
+                val unstableCoal = Models3D.createCoalPile(radius = 1.02f, heightScale = 1.5f)
+                unstableCoal.position = Vector3(getPathX(coalChokeZ) - 0.85f, 0f, coalChokeZ)
+                environmentMeshes.add(unstableCoal)
+                subList.add(unstableCoal)
+                addMineObstacle(-0.85f, coalChokeZ, 0.78f)
+
+                val brokenRailsZ = 70f
+                val brokenRails = Models3D.createBrokenPlankPile()
+                brokenRails.position = Vector3(getPathX(brokenRailsZ) + 0.6f, 0f, brokenRailsZ)
+                brokenRails.rotation.y = -18f
+                environmentMeshes.add(brokenRails)
+                subList.add(brokenRails)
+                addMineObstacle(0.6f, brokenRailsZ, 0.62f)
+
+                val chainZ = 76f
+                val hangingChainA = Models3D.createHangingRope(1.55f)
+                hangingChainA.position = Vector3(getPathX(chainZ) - 0.35f, 1.7f, chainZ)
+                environmentMeshes.add(hangingChainA)
+                subList.add(hangingChainA)
+                val hangingChainB = Models3D.createHangingRope(1.45f)
+                hangingChainB.position = Vector3(getPathX(chainZ) + 0.25f, 1.65f, chainZ + 0.18f)
+                environmentMeshes.add(hangingChainB)
+                subList.add(hangingChainB)
+                addMineObstacle(-0.05f, chainZ, 0.44f)
+
+                // Visual focal points every ~20–30m to break repetition
+                val focalLargeCart = Models3D.createMineCartDetailed(overturned = false, filled = true, damaged = true)
+                focalLargeCart.position = Vector3(getPathX(12f) + 3.25f, 0f, 12f)
+                focalLargeCart.scale = Vector3(1.28f, 1.22f, 1.3f)
+                focalLargeCart.rotation.y = -20f
+                environmentMeshes.add(focalLargeCart)
+                subList.add(focalLargeCart)
+
+                val focalCoalDeposit = Models3D.createCoalPile(radius = 1.52f, heightScale = 1.95f)
+                focalCoalDeposit.position = Vector3(getPathX(34f) - 3.4f, 0f, 34f)
+                environmentMeshes.add(focalCoalDeposit)
+                subList.add(focalCoalDeposit)
+                val focalCrystalDeposit = Models3D.createIceCrystalCluster()
+                focalCrystalDeposit.position = Vector3(getPathX(34f) - 2.95f, 0f, 34.75f)
+                focalCrystalDeposit.scale = Vector3(1.45f, 1.65f, 1.45f)
+                focalCrystalDeposit.rotation.y = 22f
+                environmentMeshes.add(focalCrystalDeposit)
+                subList.add(focalCrystalDeposit)
+
+                val focalMiningStation = Models3D.createWoodenPlatform()
+                focalMiningStation.position = Vector3(getPathX(56f) + 3.45f, 0f, 56f)
+                focalMiningStation.rotation.y = -26f
+                environmentMeshes.add(focalMiningStation)
+                subList.add(focalMiningStation)
+                val stationTools = Models3D.createAbandonedToolSet()
+                stationTools.position = Vector3(getPathX(56f) + 3.1f, 0f, 56.55f)
+                stationTools.rotation.y = 18f
+                environmentMeshes.add(stationTools)
+                subList.add(stationTools)
+
+                val focalCamp = Models3D.createWarningSign()
+                focalCamp.position = Vector3(getPathX(80f) - 3.2f, 0f, 80f)
+                focalCamp.rotation.y = 16f
+                environmentMeshes.add(focalCamp)
+                subList.add(focalCamp)
+                val campSupplies = Models3D.createMiningSupplyCluster()
+                campSupplies.position = Vector3(getPathX(80f) - 3.55f, 0f, 80.65f)
+                campSupplies.rotation.y = -14f
+                environmentMeshes.add(campSupplies)
+                subList.add(campSupplies)
+
+                val focalCollapsed = Models3D.createCollapsedSupportDebris()
+                focalCollapsed.position = Vector3(getPathX(24f) + 3.35f, 0f, 24f)
+                focalCollapsed.scale = Vector3(1.22f, 1.18f, 1.2f)
+                focalCollapsed.rotation.y = -30f
+                environmentMeshes.add(focalCollapsed)
+                subList.add(focalCollapsed)
+
+                val focalElevatorShaft = Models3D.createMineSupportFrame(width = 3.2f, height = 5.2f, depth = 1.4f)
+                focalElevatorShaft.position = Vector3(getPathX(72f) + 3.45f, 0f, 72f)
+                focalElevatorShaft.rotation.y = -8f
+                environmentMeshes.add(focalElevatorShaft)
+                subList.add(focalElevatorShaft)
+                val shaftRope = Models3D.createHangingRope(2.4f)
+                shaftRope.position = Vector3(getPathX(72f) + 3.45f, 1.2f, 72f)
+                environmentMeshes.add(shaftRope)
+                subList.add(shaftRope)
 
                 val chest = Models3D.createTreasureChest()
-                chest.position = Vector3(getPathX(72f) - 3.4f, 0f, 72f)
+                chest.position = Vector3(getPathX(1484f) - 3.4f, 0f, 1484f)
                 chest.rotation.y = 20f
                 environmentMeshes.add(chest)
                 subList.add(chest)
 
                 val exitGate = Models3D.createMineSupportFrame(width = 6.0f, height = 4.4f, depth = 0.7f)
-                exitGate.position = Vector3(getPathX(75f), 0f, 75f)
+                exitGate.position = Vector3(getPathX(1488f), 0f, 1488f)
                 environmentMeshes.add(exitGate)
                 subList.add(exitGate)
 
                 // Extend perceived depth beyond gameplay end to create vanishing tunnel scale
-                for (zFar in 88..120 step 8) {
+                for (zFar in 1512..1640 step 16) {
                     val zFarF = zFar.toFloat()
                     val farPathX = getPathX(zFarF)
                     val farYaw = getPathYaw(zFarF)
@@ -733,8 +1219,8 @@ class MainActivity : GameActivity(), SensorEventListener {
 
         // Initialize camera position immediately to prevent starting frame jump
         if (index == 0) {
-            renderer.cameraPos = Vector3(0f, 1.8f, -5.5f)
-            renderer.cameraTarget = Vector3(0f, 1.0f, 1.8f)
+            renderer.cameraPos = Vector3(getPathX(jackPos.z - 5.5f), 1.8f, jackPos.z - 5.5f)
+            renderer.cameraTarget = Vector3(getPathX(jackPos.z + 1.8f), 1.0f, jackPos.z + 1.8f)
         } else {
             renderer.cameraPos = Vector3(0.9f, 1.8f, -5.5f)
             renderer.cameraTarget = Vector3(-0.2f, 1.0f, 1.8f)
@@ -929,6 +1415,7 @@ class MainActivity : GameActivity(), SensorEventListener {
 
     // Core Frame Physics Updates
     private fun updatePhysics() {
+        val nowMs = System.currentTimeMillis()
         // Smoothly interpolate joystick vectors
         joystickMoveVec.x += (targetJoystickMoveVec.x - joystickMoveVec.x) * 0.18f
         joystickMoveVec.z += (targetJoystickMoveVec.z - joystickMoveVec.z) * 0.18f
@@ -942,6 +1429,24 @@ class MainActivity : GameActivity(), SensorEventListener {
             animTime = 0f
         }
         renderer.animTime = animTime
+
+        // Health regeneration after 10 seconds without damage.
+        val regenAllowed = gameState == GameState.GAMEPLAY &&
+            playerHealth > 0f &&
+            playerHealth < 100f &&
+            (nowMs - lastDamageTimestampMs) >= 10_000L
+        isHealthRegenActive = regenAllowed
+        if (regenAllowed) {
+            playerHealth = (playerHealth + 0.09f).coerceAtMost(100f)
+        }
+        if (currentStageIndex == 0) {
+            val insideMine = jackPos.z >= 0f
+            if (insideMine != isStage1InsideMine) {
+                isStage1InsideMine = insideMine
+            }
+        } else if (isStage1InsideMine) {
+            isStage1InsideMine = false
+        }
 
         // 1. Gravity and Player position updates
         if (isJumping) {
@@ -960,7 +1465,7 @@ class MainActivity : GameActivity(), SensorEventListener {
         // Apply joystick movement vectors
         if (joystickMoveVec.x != 0f || joystickMoveVec.z != 0f) {
             val moveSpeed = 0.06f
-            val limitZ = if (currentStageIndex == 0) floatArrayOf(-15f, 85f) else floatArrayOf(-35f, 35f)
+            val limitZ = if (currentStageIndex == 0) floatArrayOf(-500f, 1500f) else floatArrayOf(-35f, 35f)
             
             if (currentStageIndex == 0) {
                 // Winding mine path: movement is relative to the path center to prevent clipping
@@ -1163,7 +1668,7 @@ class MainActivity : GameActivity(), SensorEventListener {
         }
 
         // 6. Check Win conditions (EXPLORATION GATE EXIT TRIGGER)
-        val winZ = if (currentStageIndex == 0) 75.0f else 14.2f
+        val winZ = if (currentStageIndex == 0) 1488.0f else 14.2f
         if (jackPos.z >= winZ && (enemiesRemaining == 0 || (enemyMeshes.isEmpty() && bossMesh == null && enemiesRemaining == 1))) {
             enemiesRemaining = -1 // Stop duplicate triggers
             gameState = GameState.OUTRO_CUTSCENE
@@ -1192,6 +1697,26 @@ class MainActivity : GameActivity(), SensorEventListener {
                 }
             }
         }
+
+        if (currentStageIndex == 0 && jackPos.z >= 42f && mineCrystalAnchors.isNotEmpty()) {
+            val nearestCrystal = mineCrystalAnchors.minByOrNull { anchor ->
+                val dx = jackPos.x - anchor.x
+                val dz = jackPos.z - anchor.z
+                dx * dx + dz * dz
+            }
+            nearestCrystal?.let { crystalPos ->
+                val t = (System.currentTimeMillis() % 10_000L).toFloat() * 0.001f
+                val corruptionDepth = ((jackPos.z - 42f) / 36f).coerceIn(0f, 1f)
+                val eeriePulse = (1.75f + 0.9f * sin(t * 7.5f + crystalPos.z * 0.25f) + 0.4f * sin(t * 15f + crystalPos.x))
+                    .coerceIn(1.0f, 3.1f)
+                val intensity = eeriePulse * (0.45f + corruptionDepth * 0.75f)
+                if (renderer.pointLightIntensity < intensity) {
+                    renderer.pointLightPos = crystalPos
+                    renderer.pointLightColor = floatArrayOf(0.28f, 0.56f, 1.0f)
+                    renderer.pointLightIntensity = intensity
+                }
+            }
+        }
     }
 
     private fun fireEnemyLaser(pos: Vector3) {
@@ -1207,6 +1732,8 @@ class MainActivity : GameActivity(), SensorEventListener {
     }
 
     private fun damageJack() {
+        lastDamageTimestampMs = System.currentTimeMillis()
+        isHealthRegenActive = false
         if (jackState == "Block") {
             // Greatly reduce damage when blocking
             playerHealth = (playerHealth - 2f).coerceAtLeast(0f)
@@ -1272,7 +1799,7 @@ class MainActivity : GameActivity(), SensorEventListener {
             val playerRadius = 0.4f
 
             // 1. Check support arches (every 6 units from -12 to 84)
-            for (zArch in -12..84 step 6) {
+            for (zArch in -12..1500 step 18) {
                 val zArchF = zArch.toFloat()
                 if (kotlin.math.abs(newZ - zArchF) > 1.5f) continue
 
@@ -1306,20 +1833,20 @@ class MainActivity : GameActivity(), SensorEventListener {
             }
 
             // 3. Check Exit Gate Posts (Z = 75.0f)
-            if (kotlin.math.abs(newZ - 75.0f) < 1.5f) {
-                val pathX = getPathX(75.0f)
+            if (kotlin.math.abs(newZ - 1488.0f) < 1.5f) {
+                val pathX = getPathX(1488.0f)
                 // Left post
                 val lpX = pathX - 2.8f
-                val lpDist = kotlin.math.sqrt((newX - lpX) * (newX - lpX) + (newZ - 75.0f) * (newZ - 75.0f))
+                val lpDist = kotlin.math.sqrt((newX - lpX) * (newX - lpX) + (newZ - 1488.0f) * (newZ - 1488.0f))
                 if (lpDist < (0.15f + playerRadius)) {
-                    return resolveCircleCollision(newX, newZ, oldX, oldZ, lpX, 75.0f, 0.15f + playerRadius)
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, lpX, 1488.0f, 0.15f + playerRadius)
                 }
 
                 // Right post
                 val rpX = pathX + 2.8f
-                val rpDist = kotlin.math.sqrt((newX - rpX) * (newX - rpX) + (newZ - 75.0f) * (newZ - 75.0f))
+                val rpDist = kotlin.math.sqrt((newX - rpX) * (newX - rpX) + (newZ - 1488.0f) * (newZ - 1488.0f))
                 if (rpDist < (0.15f + playerRadius)) {
-                    return resolveCircleCollision(newX, newZ, oldX, oldZ, rpX, 75.0f, 0.15f + playerRadius)
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, rpX, 1488.0f, 0.15f + playerRadius)
                 }
             }
             // 4. Check mine obstacle circles
