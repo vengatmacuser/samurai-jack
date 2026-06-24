@@ -22,8 +22,8 @@ object Stages {
             subtitle = "The Frozen Tomb",
             objective = "Cross the cold abandoned mine deep in the northern mountains.",
             bgColor = floatArrayOf(0.05f, 0.08f, 0.15f),
-            fogColor = floatArrayOf(0.4f, 0.5f, 0.65f),
-            fogDensity = 0.025f,
+            fogColor = floatArrayOf(0.12f, 0.11f, 0.1f),
+            fogDensity = 0.052f,
             groundColor = floatArrayOf(0.2f, 0.25f, 0.3f),
             dialogs = listOf(
                 "Aku: The freezing depths of Frosthollow Mine shall be your tomb, Samurai!",
@@ -239,4 +239,3 @@ object Stages {
         )
     )
 }
-

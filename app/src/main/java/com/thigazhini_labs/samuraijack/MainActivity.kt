@@ -42,6 +42,8 @@ enum class GameState {
     GAME_COMPLETE
 }
 
+data class MineObstacle(val pathRelX: Float, val pathZ: Float, val radius: Float)
+
 class MainActivity : ComponentActivity(), SensorEventListener {
 
     // Sensors for motion controls
@@ -84,6 +86,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private val enemyMeshes = mutableListOf<Mesh>()
     private val laserMeshes = mutableListOf<Mesh>()
     private val environmentMeshes = mutableListOf<Mesh>()
+    private val mineLanternAnchors = mutableListOf<Vector3>()
+    private val mineObstacleCircles = mutableListOf<MineObstacle>()
     private var groundMesh: Mesh? = null
     private var bossMesh: Mesh? = null
 
@@ -440,7 +444,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         val stage = Stages.stagesList[index]
         playerHealth = 100f
         playerSwordEnergy = 0f
-        enemiesRemaining = stage.enemyCount
+        enemiesRemaining = 0
         jackPos = Vector3(0f, 0.4f, 0f)
         jackVelY = 0f
         isJumping = false
@@ -449,6 +453,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         enemyMeshes.clear()
         laserMeshes.clear()
         environmentMeshes.clear()
+        mineLanternAnchors.clear()
+        mineObstacleCircles.clear()
 
         val list = withContext(Dispatchers.IO) {
             val subList = mutableListOf<Mesh>()
@@ -456,14 +462,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             // 1. Create Ground (use custom 3D mesh for Stage 1 Frosthollow Mine)
             val gc = stage.groundColor
             val gMesh = if (index == 0) {
-                Models3D.loadObj(
-                    context = this@MainActivity,
-                    objFileName = "step_1_navigation_surface_frozen_mine.obj",
-                    mtlFileName = null,
-                    scaleMultiplier = 1.0f,
-                    yOffset = 0.0f,
-                    rotationOffsetY = 0f
-                )
+                Models3D.createGround(16f, 124f, 0.06f, 0.06f, 0.07f)
             } else {
                 Models3D.createGround(12f, 80f, gc[0], gc[1], gc[2])
             }
@@ -486,80 +485,245 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             skyMesh = sky
             subList.add(sky)
 
+            if (index == 0) {
+                for (z in -12..84 step 8) {
+                    val zF = z.toFloat()
+                    val pathX = getPathX(zF)
+                    val yaw = getPathYaw(zF)
+
+                    val tunnelModule = Models3D.createTunnelRockModule()
+                    tunnelModule.position = Vector3(pathX, 0f, zF)
+                    tunnelModule.rotation.y = yaw
+                    environmentMeshes.add(tunnelModule)
+                    subList.add(tunnelModule)
+
+                    // Ceiling detail every module
+                    val ceiling = Models3D.createCaveCeilingSection(ceilY = 4.0f)
+                    ceiling.position = Vector3(pathX, 0f, zF)
+                    ceiling.rotation.y = yaw
+                    environmentMeshes.add(ceiling)
+                    subList.add(ceiling)
+
+                    val railSection = Models3D.createMiningRailSection(length = 8f, sleeperCount = 7)
+                    railSection.position = Vector3(pathX, 0f, zF)
+                    railSection.rotation.y = yaw
+                    environmentMeshes.add(railSection)
+                    subList.add(railSection)
+                }
+
+                for (zArch in -12..84 step 6) {
+                    val zF = zArch.toFloat()
+                    val pathX = getPathX(zF)
+
+                    if (zArch % 12 == 0) {
+                        val warmLanternL = Models3D.createMineLanternGlow(0.98f, 0.78f, 0.34f)
+                        val leftLanternPos = Vector3(pathX - 2.62f, 0f, zF + 0.35f)
+                        warmLanternL.position = leftLanternPos
+                        environmentMeshes.add(warmLanternL)
+                        subList.add(warmLanternL)
+                        mineLanternAnchors.add(Vector3(leftLanternPos.x, 0.95f, leftLanternPos.z))
+
+                        val warmLanternR = Models3D.createMineLanternGlow(0.96f, 0.72f, 0.3f)
+                        val rightLanternPos = Vector3(pathX + 2.62f, 0f, zF - 0.35f)
+                        warmLanternR.position = rightLanternPos
+                        environmentMeshes.add(warmLanternR)
+                        subList.add(warmLanternR)
+                        mineLanternAnchors.add(Vector3(rightLanternPos.x, 0.95f, rightLanternPos.z))
+                    }
+                }
+
+                for (z in -10..84 step 4) {
+                    val zF = z.toFloat()
+                    val pathX = getPathX(zF)
+                    val leftPile = Models3D.createCoalPile(radius = 0.72f, heightScale = 1.22f)
+                    leftPile.position = Vector3(pathX - 3.2f, 0f, zF + 0.5f)
+                    environmentMeshes.add(leftPile)
+                    subList.add(leftPile)
+
+                    val rightPile = Models3D.createCoalPile(radius = 0.64f, heightScale = 1.08f)
+                    rightPile.position = Vector3(pathX + 3.2f, 0f, zF - 0.4f)
+                    environmentMeshes.add(rightPile)
+                    subList.add(rightPile)
+
+                    val centerChunks = Models3D.createCoalDebrisPatch(size = 1.36f)
+                    centerChunks.position = Vector3(pathX + if ((z / 4) % 2 == 0) 0.4f else -0.35f, 0f, zF - 0.2f)
+                    environmentMeshes.add(centerChunks)
+                    subList.add(centerChunks)
+
+                    if (z % 8 == 0) {
+                        val debris = Models3D.createCoalDebrisPatch(size = 1.4f)
+                        debris.position = Vector3(pathX + if ((z / 4) % 2 == 0) 1.6f else -1.6f, 0f, zF)
+                        environmentMeshes.add(debris)
+                        subList.add(debris)
+                    }
+
+                    if (z % 8 == 0) {
+                        val dust = Models3D.createDustMoteCluster()
+                        dust.position = Vector3(pathX + if ((z / 12) % 2 == 0) 0.9f else -0.9f, 0f, zF + 1.1f)
+                        environmentMeshes.add(dust)
+                        subList.add(dust)
+                    }
+
+                    if (z % 12 == 0) {
+                        val fog = Models3D.createMineFogBank()
+                        fog.position = Vector3(pathX + if ((z / 8) % 2 == 0) 0.5f else -0.5f, 0f, zF + 0.6f)
+                        environmentMeshes.add(fog)
+                        subList.add(fog)
+                    }
+
+                    if (z % 12 == 0) {
+                        val smoke = Models3D.createCoalSmokePlume()
+                        smoke.position = Vector3(pathX + if ((z / 12) % 2 == 0) 2.05f else -2.05f, 0f, zF - 0.5f)
+                        environmentMeshes.add(smoke)
+                        subList.add(smoke)
+                    }
+
+                    if (z % 8 == 0) {
+                        val rubble = Models3D.createMineRubbleMound()
+                        rubble.position = Vector3(pathX + if ((z / 8) % 2 == 0) 2.35f else -2.35f, 0f, zF - 0.8f)
+                        environmentMeshes.add(rubble)
+                        subList.add(rubble)
+                    }
+                }
+
+
+                val overturnedCart = Models3D.createMineCartDetailed(overturned = true, filled = true)
+                overturnedCart.position = Vector3(getPathX(52f) - 1.8f, 0.0f, 52f)
+                overturnedCart.rotation.y = 32f
+                overturnedCart.rotation.z = 18f
+                environmentMeshes.add(overturnedCart)
+                subList.add(overturnedCart)
+
+                val parkedCart = Models3D.createMineCartDetailed(overturned = false, filled = true, damaged = true)
+                parkedCart.position = Vector3(getPathX(34f) - 2.1f, 0f, 34f)
+                parkedCart.rotation.y = -18f
+                environmentMeshes.add(parkedCart)
+                subList.add(parkedCart)
+
+                val derailedCart = Models3D.createMineCartDetailed(overturned = true, filled = false, damaged = true)
+                derailedCart.position = Vector3(getPathX(66f) + 2.15f, 0f, 66f)
+                derailedCart.rotation.y = 54f
+                derailedCart.rotation.z = 24f
+                environmentMeshes.add(derailedCart)
+                subList.add(derailedCart)
+
+                val artifact = Models3D.createAncientMineArtifact()
+                artifact.position = Vector3(getPathX(30f) - 3.35f, 0f, 30f)
+                environmentMeshes.add(artifact)
+                subList.add(artifact)
+
+                val tools = Models3D.createAbandonedToolSet()
+                tools.position = Vector3(getPathX(46f) + 3.15f, 0f, 46f)
+                tools.rotation.y = -40f
+                environmentMeshes.add(tools)
+                subList.add(tools)
+
+                val supplyClusterA = Models3D.createMiningSupplyCluster()
+                supplyClusterA.position = Vector3(getPathX(18f) - 3.3f, 0f, 18f)
+                supplyClusterA.rotation.y = 18f
+                environmentMeshes.add(supplyClusterA)
+                subList.add(supplyClusterA)
+
+                val supplyClusterB = Models3D.createMiningSupplyCluster()
+                supplyClusterB.position = Vector3(getPathX(58f) + 3.28f, 0f, 58f)
+                supplyClusterB.rotation.y = -22f
+                environmentMeshes.add(supplyClusterB)
+                subList.add(supplyClusterB)
+
+                // Coal carts every ~20 m along walls (not blocking path)
+                for (zCart in listOf(8f, 20f, 38f, 48f, 60f)) {
+                    val cpX = getPathX(zCart)
+                    val side = if (zCart.toInt() % 40 == 8 || zCart.toInt() % 40 == 38 || zCart.toInt() % 40 == 0) 2.25f else -2.25f
+                    val cartV = Models3D.createMineCartDetailed(
+                        overturned = zCart.toInt() % 30 == 8,
+                        filled = zCart.toInt() % 20 != 0,
+                        damaged = zCart > 40f
+                    )
+                    cartV.position = Vector3(cpX + side, 0f, zCart)
+                    cartV.rotation.y = if (side > 0f) -15f else 15f
+                    environmentMeshes.add(cartV)
+                    subList.add(cartV)
+                }
+
+                // Ceiling lamps every 10 m — hang above the centre/sides for extra drama
+                for (zCl in 0..78 step 10) {
+                    val clF = zCl.toFloat()
+                    val clPathX = getPathX(clF)
+                    val offsetX = when ((zCl / 10) % 3) { 0 -> 0f; 1 -> -1.2f; else -> 1.2f }
+                    val lamp = Models3D.createCeilingLamp(0.98f, 0.74f, 0.26f)
+                    lamp.position = Vector3(clPathX + offsetX, 0f, clF)
+                    environmentMeshes.add(lamp)
+                    subList.add(lamp)
+                    mineLanternAnchors.add(Vector3(clPathX + offsetX, 2.84f, clF))
+                }
+
+                for (zProp in -6..78 step 12) {
+                    val zPropF = zProp.toFloat()
+                    val propPathX = getPathX(zPropF)
+                    val side = if ((zProp / 6) % 2 == 0) 3.35f else -3.35f
+
+                    val propCluster = Models3D.createMiningSupplyCluster()
+                    propCluster.position = Vector3(propPathX + side * 2.8f, 0f, zPropF + 0.3f)
+                    propCluster.rotation.y = if (side > 0f) -30f else 28f
+                    environmentMeshes.add(propCluster)
+                    subList.add(propCluster)
+                }
+
+                // ── ALL OBSTACLES REMOVED ──
+
+                val chest = Models3D.createTreasureChest()
+                chest.position = Vector3(getPathX(72f) - 3.4f, 0f, 72f)
+                chest.rotation.y = 20f
+                environmentMeshes.add(chest)
+                subList.add(chest)
+
+                val exitGate = Models3D.createMineSupportFrame(width = 6.0f, height = 4.4f, depth = 0.7f)
+                exitGate.position = Vector3(getPathX(75f), 0f, 75f)
+                environmentMeshes.add(exitGate)
+                subList.add(exitGate)
+
+                // Extend perceived depth beyond gameplay end to create vanishing tunnel scale
+                for (zFar in 88..120 step 8) {
+                    val zFarF = zFar.toFloat()
+                    val farPathX = getPathX(zFarF)
+                    val farYaw = getPathYaw(zFarF)
+
+                    val farTunnel = Models3D.createTunnelRockModule(width = 8.4f, height = 5.0f, depth = 8f)
+                    farTunnel.position = Vector3(farPathX, 0f, zFarF)
+                    farTunnel.rotation.y = farYaw
+                    environmentMeshes.add(farTunnel)
+                    subList.add(farTunnel)
+
+                    val farCeiling = Models3D.createCaveCeilingSection(ceilY = 3.9f)
+                    farCeiling.position = Vector3(farPathX, 0f, zFarF)
+                    farCeiling.rotation.y = farYaw
+                    environmentMeshes.add(farCeiling)
+                    subList.add(farCeiling)
+
+                    if (zFar % 16 == 0) {
+                        val farLamp = Models3D.createMineLanternGlow(0.92f, 0.68f, 0.24f)
+                        farLamp.position = Vector3(farPathX + 2.45f, 0f, zFarF)
+                        environmentMeshes.add(farLamp)
+                        subList.add(farLamp)
+                    }
+                }
+            }
+
             // 3. Environment structures based on theme
-            if (stage.stageNumber in listOf(1, 2, 4, 13)) {
+            if (stage.stageNumber in listOf(2, 4, 13)) {
                 // Ancient Pagodas
                 val gate = Models3D.createToriiGate()
                 gate.position = Vector3(0f, 0f, 15f)
                 subList.add(gate)
             }
 
-            // 4. Create enemies dynamically for all stages
-            val count = stage.enemyCount
-            val boss = stage.bossType
-            
-            if (boss != "None") {
-                // Spawn Boss Fight
-                val bMesh = if (boss == "Aku") {
-                    Models3D.createAku().apply {
-                        position = Vector3(0f, 0.4f, 15f)
-                        scale = Vector3(1.2f, 1.2f, 1.2f)
-                    }
-                } else {
-                    // For Lava Guardian, Shadow Ronin, Scotsman, Beast etc., use customized color/scale Samurai model
-                    Models3D.loadObj(
-                        context = this@MainActivity,
-                        objFileName = "samurai_model.obj",
-                        mtlFileName = "samurai_model.mtl",
-                        scaleMultiplier = if (boss == "Beast") 3.5f else 2.5f,
-                        yOffset = if (boss == "Beast") 1.0f else 0.8f,
-                        rotationOffsetY = 180f
-                    ).apply {
-                        position = Vector3(0f, 0.4f, 14f)
-                        silhouetteMode = when (boss) {
-                            "Ronin" -> 1 // Silhouette black-red
-                            "LavaGuardian" -> 2 // Glowing orange-red
-                            else -> 0
-                        }
-                    }
-                }
-                bossMesh = bMesh
-                subList.add(bMesh)
-            } else if (count > 0) {
-                // Spawn standard swarmer Beetle Drones spaced out along the path
-                for (i in 0 until count) {
-                    val enemyZ = if (index == 0) {
-                        22f + i * 18f
-                    } else {
-                        5f + i * 4.5f
-                    }
-                    val enemyX = if (index == 0) {
-                        getPathX(enemyZ)
-                    } else {
-                        if (i % 2 == 0) -1.2f else 1.2f
-                    }
-                    
-                    val enemy = Models3D.createRoboBeetle()
-                    enemy.position = Vector3(enemyX, 0.5f, enemyZ)
-                    enemy.isVisible = true
-                    
-                    enemyMeshes.add(enemy)
-                    subList.add(enemy)
-                }
-            }
+            bossMesh = null
 
             subList
         }
 
-        // Setup boss and enemy states on UI thread
-        if (stage.bossType != "None") {
-            bossHitsRemaining = 5
-            enemiesRemaining = 1
-        } else if (stage.enemyCount > 0) {
-            enemiesRemaining = stage.enemyCount
-        } else {
-            enemiesRemaining = 1
-        }
+        bossHitsRemaining = 0
+        enemiesRemaining = 0
 
         // Initialize camera position immediately to prevent starting frame jump
         if (index == 0) {
@@ -1000,9 +1164,27 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             startCutscene(currentStageIndex, false)
         }
 
-        // Point light decay
+        // Point light decay with stage-1 lantern flicker fallback
         if (renderer.pointLightIntensity > 0f) {
             renderer.pointLightIntensity -= 0.08f
+        }
+
+        if (currentStageIndex == 0 && mineLanternAnchors.isNotEmpty()) {
+            val nearestLantern = mineLanternAnchors.minByOrNull { anchor ->
+                val dx = jackPos.x - anchor.x
+                val dz = jackPos.z - anchor.z
+                dx * dx + dz * dz
+            }
+            nearestLantern?.let { lanternPos ->
+                val t = (System.currentTimeMillis() % 10_000L).toFloat() * 0.001f
+                val flicker = (2.2f + 0.74f * sin(t * 11f + lanternPos.z * 0.2f) + 0.45f * sin(t * 23f + lanternPos.x))
+                    .coerceIn(1.25f, 3.4f)
+                if (renderer.pointLightIntensity < flicker) {
+                    renderer.pointLightPos = lanternPos
+                    renderer.pointLightColor = floatArrayOf(1.0f, 0.56f, 0.16f)
+                    renderer.pointLightIntensity = flicker
+                }
+            }
         }
     }
 
@@ -1046,6 +1228,16 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             return 2.2f * sin(z * 0.08f)
         }
         return 0f
+    }
+
+    private fun getPathYaw(z: Float): Float {
+        if (currentStageIndex != 0) return 0f
+        val step = 0.5f
+        val xAhead = getPathX(z + step)
+        val xBehind = getPathX(z - step)
+        val dx = xAhead - xBehind
+        val dz = step * 2f
+        return Math.toDegrees(kotlin.math.atan2(dx.toDouble(), dz.toDouble())).toFloat()
     }
 
     private fun checkCollision(newX: Float, newZ: Float, oldX: Float, oldZ: Float): Vector3 {
@@ -1122,6 +1314,17 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val rpDist = kotlin.math.sqrt((newX - rpX) * (newX - rpX) + (newZ - 75.0f) * (newZ - 75.0f))
                 if (rpDist < (0.15f + playerRadius)) {
                     return resolveCircleCollision(newX, newZ, oldX, oldZ, rpX, 75.0f, 0.15f + playerRadius)
+                }
+            }
+            // 4. Check mine obstacle circles
+            for (obs in mineObstacleCircles) {
+                if (kotlin.math.abs(newZ - obs.pathZ) > 2.0f) continue
+                val obsX = getPathX(obs.pathZ) + obs.pathRelX
+                val dx = newX - obsX
+                val dz = newZ - obs.pathZ
+                val dist = kotlin.math.sqrt(dx * dx + dz * dz)
+                if (dist < obs.radius + playerRadius) {
+                    return resolveCircleCollision(newX, newZ, oldX, oldZ, obsX, obs.pathZ, obs.radius + playerRadius)
                 }
             }
         }

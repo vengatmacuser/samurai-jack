@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -1075,19 +1076,19 @@ fun GameplayActionButton(
         label = "btnScale"
     )
     
-    val glowColor = if (isPressed) Color(0xFFD41414) else Color.White.copy(alpha = 0.6f)
+    val glowColor = if (isPressed) Color.White.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.6f)
     val buttonBg = if (isPressed) {
-        Brush.radialGradient(listOf(Color(0xFF6B0A0A), Color(0xFF1E0505)))
+        Brush.radialGradient(listOf(Color(0x8848515B), Color(0xAA101318)))
     } else {
-        Brush.radialGradient(listOf(Color(0x44FFFFFF), Color(0x1AFFFFFF)))
+        Brush.radialGradient(listOf(Color(0x664A515E), Color(0xAA0B0D12)))
     }
 
     Box(
         modifier = modifier
             .scale(scale)
             .size(sizeDp)
-            .background(buttonBg, RoundedCornerShape(sizeDp / 2))
-            .border(2.dp, glowColor, RoundedCornerShape(sizeDp / 2))
+            .background(buttonBg, CircleShape)
+            .border(2.dp, glowColor, CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // Disable default ripple to use our custom scale/glow feedback
@@ -1098,7 +1099,7 @@ fun GameplayActionButton(
         Text(
             text = icon,
             fontSize = if (sizeDp > 50.dp) 26.sp else 18.sp,
-            modifier = Modifier.alpha(if (isPressed) 1.0f else 0.85f)
+            modifier = Modifier.alpha(if (isPressed) 1.0f else 0.9f)
         )
     }
 }
@@ -1137,14 +1138,15 @@ fun GameplayHUD(
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(8.dp)
+                .padding(start = 4.dp, top = 8.dp)
+                .widthIn(min = 250.dp, max = 330.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.7f), Color(0xFF1E0505).copy(alpha = 0.8f))
+                        colors = listOf(Color.Black.copy(alpha = 0.78f), Color(0xFF0C0D12).copy(alpha = 0.88f))
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp)
                 )
-                .border(1.5.dp, Color(0xFFD41414).copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                .border(1.6.dp, Color(0xFFD41414).copy(alpha = 0.75f), RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Row(
@@ -1307,17 +1309,17 @@ fun GameplayHUD(
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-                .background(Color(0xCC000000), RoundedCornerShape(4.dp))
-                .border(1.dp, Color.DarkGray, RoundedCornerShape(4.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .padding(top = 14.dp)
+                .background(Color(0xC0000000), RoundedCornerShape(6.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 22.dp, vertical = 8.dp)
         ) {
             Text(
                 text = if (enemiesRemaining > 0) "ENEMIES: $enemiesRemaining" else "STAGE CLEAR!",
                 color = if (enemiesRemaining > 0) Color.White else Color(0xFFFFCC00),
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
+                letterSpacing = 2.6.sp
             )
         }
 
@@ -1325,10 +1327,10 @@ fun GameplayHUD(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(40.dp)
-                .background(Color(0x33FFFFFF), RoundedCornerShape(20.dp))
-                .border(1.5.dp, Color.White, RoundedCornerShape(20.dp))
+                .padding(top = 12.dp, end = 10.dp)
+                .size(54.dp)
+                .background(Color(0x22252C34), CircleShape)
+                .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape)
                 .clickable { onBack() },
             contentAlignment = Alignment.Center
         ) {
@@ -1345,14 +1347,14 @@ fun GameplayHUD(
         var containerSize by remember { mutableStateOf(IntSize.Zero) }
         
         val density = LocalDensity.current
-        val joystickRadius = 50.dp
+        val joystickRadius = 56.dp
         val joystickRadiusPx = with(density) { joystickRadius.toPx() }
-        val joystickBaseSizePx = with(density) { 100.dp.toPx() }
+        val joystickBaseSizePx = with(density) { 112.dp.toPx() }
         
         val defaultCenter = Offset(
             x = with(density) { 100.dp.toPx() },
             y = if (containerSize.height > 0) {
-                containerSize.height - with(density) { 100.dp.toPx() }
+                containerSize.height - with(density) { 118.dp.toPx() }
             } else {
                 0f
             }
@@ -1414,21 +1416,21 @@ fun GameplayHUD(
                             x = with(density) { (activeCenter.x - joystickBaseSizePx / 2f).toDp() },
                             y = with(density) { (activeCenter.y - joystickBaseSizePx / 2f).toDp() }
                         )
-                        .size(100.dp)
+                        .size(112.dp)
                         .background(
                             brush = Brush.radialGradient(
                                 colors = if (isJoystickPressed) {
-                                    listOf(Color(0x33D41414), Color(0x11D41414))
+                                    listOf(Color(0x4D9CA3AF), Color(0x220E1014))
                                 } else {
-                                    listOf(Color(0x22FFFFFF), Color(0x05FFFFFF))
+                                    listOf(Color(0x339CA3AF), Color(0x220E1014))
                                 }
                             ),
-                            shape = RoundedCornerShape(50.dp)
+                            shape = CircleShape
                         )
                         .border(
-                            width = 2.dp,
-                            color = if (isJoystickPressed) Color(0xCCD41414) else Color(0x44FFFFFF),
-                            shape = RoundedCornerShape(50.dp)
+                            width = 2.4.dp,
+                            color = Color.White.copy(alpha = if (isJoystickPressed) 0.8f else 0.55f),
+                            shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1450,13 +1452,13 @@ fun GameplayHUD(
                             )
                             .size(46.dp)
                             .background(
-                                color = if (isJoystickPressed) Color(0xCC1E0505) else Color(0x99FFFFFF),
-                                shape = RoundedCornerShape(23.dp)
+                                color = if (isJoystickPressed) Color(0xCC2F343C) else Color(0xBBD2D5DA),
+                                shape = CircleShape
                             )
                             .border(
                                 width = 2.5.dp,
-                                color = if (isJoystickPressed) Color(0xFFD41414) else Color.White,
-                                shape = RoundedCornerShape(23.dp)
+                                color = Color.White.copy(alpha = if (isJoystickPressed) 0.9f else 0.78f),
+                                shape = CircleShape
                             )
                     )
                 }
@@ -1475,7 +1477,7 @@ fun GameplayHUD(
             GameplayActionButton(
                 icon = "🗡️",
                 onClick = onMeleeAttack,
-                sizeDp = 72.dp,
+                sizeDp = 82.dp,
                 modifier = Modifier.align(Alignment.BottomEnd)
             )
 
@@ -1483,16 +1485,16 @@ fun GameplayHUD(
             GameplayActionButton(
                 icon = "⬆️",
                 onClick = onJump,
-                sizeDp = 48.dp,
-                modifier = Modifier.align(Alignment.TopEnd).padding(end = 12.dp)
+                sizeDp = 56.dp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(end = 10.dp, top = 2.dp)
             )
 
             // Defense / Block Button (Bottom-Left)
             GameplayActionButton(
                 icon = "🛡️",
                 onClick = onBlock,
-                sizeDp = 48.dp,
-                modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp)
+                sizeDp = 56.dp,
+                modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 14.dp)
             )
         }
 

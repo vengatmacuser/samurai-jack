@@ -201,9 +201,15 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
         GLES30.glUniform3f(fogColorLink, stage.fogColor[0], stage.fogColor[1], stage.fogColor[2])
         GLES30.glUniform1f(fogDensityLink, stage.fogDensity)
 
-        // Directional Sunlight (Steeper angle for dramatic side-shadows)
-        GLES30.glUniform3f(dirLightDirLink, -1.2f, -0.8f, 0.4f)
-        GLES30.glUniform3f(dirLightColorLink, 1.0f, 0.95f, 0.90f)
+        // Stage-specific directional light for stronger mood control
+        if (currentStageIndex == 0) {
+            // Frosthollow mine: dim ambient base so lanterns drive contrast
+            GLES30.glUniform3f(dirLightDirLink, -0.8f, -1.15f, 0.26f)
+            GLES30.glUniform3f(dirLightColorLink, 0.34f, 0.28f, 0.2f)
+        } else {
+            GLES30.glUniform3f(dirLightDirLink, -1.2f, -0.8f, 0.4f)
+            GLES30.glUniform3f(dirLightColorLink, 1.0f, 0.95f, 0.90f)
+        }
 
         // Point light (pulsing lasers / sword impact glow)
         GLES30.glUniform3f(pointLightPosLink, pointLightPos.x, pointLightPos.y, pointLightPos.z)
