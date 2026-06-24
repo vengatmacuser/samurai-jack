@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Pre-commit hook for Samurai Jack project
+# Runs code quality checks before allowing commits
+
+echo "🔍 Running pre-commit checks..."
+
+# Run KtLint
+echo "📝 Checking code formatting with KtLint..."
+./gradlew ktlintCheck
+if [ $? -ne 0 ]; then
+    echo "❌ KtLint failed. Running auto-format..."
+    ./gradlew ktlintFormat
+    echo "⚠️  Please review and re-stage the formatted files"
+    exit 1
+fi
+
+# Run Detekt
+echo "🔎 Running static analysis with Detekt..."
+./gradlew detekt
+if [ $? -ne 0 ]; then
+    echo "❌ Detekt found issues. Please fix them before committing"
+    exit 1
+fi
+
+# Run unit tests
+echo "🧪 Running unit tests..."
+./gradlew testDebugUnitTest
+if [ $? -ne 0 ]; then
+    echo "❌ Unit tests failed. Please fix them before committing"
+    exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0
