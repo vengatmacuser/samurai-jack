@@ -5,7 +5,7 @@ project("samurai_jack_gameactivity")
 find_package(game-activity REQUIRED CONFIG)
 
 add_library(
-    main
+    samuraijack
     SHARED
     game_main.cpp
 )
@@ -13,7 +13,7 @@ add_library(
 if (ANDROID)
     # Ensure generated ELF segments are 16 KB page-size compatible on newer Android devices.
     target_link_options(
-        main
+        samuraijack
         PRIVATE
         "-Wl,-z,max-page-size=16384"
         "-Wl,-z,common-page-size=16384"
@@ -21,7 +21,7 @@ if (ANDROID)
 endif()
 
 target_link_libraries(
-    main
+    samuraijack
     android
     log
     -Wl,--whole-archive

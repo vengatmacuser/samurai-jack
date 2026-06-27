@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86_64/libmain.so"
+			"path" : "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86_64/libsamuraijack.so"
 		}
 	],
 	"backtrace" : 1,
@@ -55,7 +55,7 @@
 			"defines" : 
 			[
 				{
-					"define" : "main_EXPORTS"
+					"define" : "samuraijack_EXPORTS"
 				}
 			],
 			"includes" : 
@@ -77,7 +77,7 @@
 			}
 		}
 	],
-	"id" : "main::@6890427a1f51a3e7e1df",
+	"id" : "samuraijack::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -132,8 +132,8 @@
 			"path" : "/Users/vengateswaran/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/sysroot"
 		}
 	},
-	"name" : "main",
-	"nameOnDisk" : "libmain.so",
+	"name" : "samuraijack",
+	"nameOnDisk" : "libsamuraijack.so",
 	"paths" : 
 	{
 		"build" : ".",

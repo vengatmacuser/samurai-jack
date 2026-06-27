@@ -1,21 +1,7 @@
 # ninja log v5
-0	42	1782281089240561953	CMakeFiles/main.dir/game_main.cpp.o	1ddcdece23be5e07
-42	99	1782281089295330750	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so	6b7b044181bddaf6
-0	28	1782281250069362787	build.ninja	5e87784315e21dd2
-0	7	0	clean	fc2343633bf3679f
-0	43	1782281250132004062	CMakeFiles/main.dir/game_main.cpp.o	1ddcdece23be5e07
-43	94	1782281250181547069	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so	ae860033975f050c
-0	4	0	clean	fc2343633bf3679f
-0	4	0	clean	fc2343633bf3679f
-0	44	1782281321754228463	CMakeFiles/main.dir/game_main.cpp.o	1ddcdece23be5e07
-44	92	1782281321799520979	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so	ae860033975f050c
-0	6	0	clean	fc2343633bf3679f
-0	48	1782283356503677523	CMakeFiles/main.dir/game_main.cpp.o	1ddcdece23be5e07
-48	97	1782283356550362571	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so	ae860033975f050c
-0	4	0	clean	fc2343633bf3679f
-0	40	1782285093496982622	CMakeFiles/main.dir/game_main.cpp.o	1ddcdece23be5e07
-40	91	1782285093546337749	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so	ae860033975f050c
 0	5	0	clean	fc2343633bf3679f
-0	5	0	clean	fc2343633bf3679f
-0	52	1782287983010476148	CMakeFiles/main.dir/game_main.cpp.o	1ddcdece23be5e07
+0	28	1782553430181404348	build.ninja	5e87784315e21dd2
 52	114	1782287983070096245	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so	ae860033975f050c
+0	52	1782287983010476148	CMakeFiles/main.dir/game_main.cpp.o	1ddcdece23be5e07
+0	55	1782553430795994701	CMakeFiles/samuraijack.dir/game_main.cpp.o	d52bcb017f16c7a4
+56	157	1782553430896392077	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so	8056185569afd351

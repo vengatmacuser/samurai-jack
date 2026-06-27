@@ -1,21 +1,7 @@
 # ninja log v5
-57	118	1782281089177918929	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libmain.so	3d0e9b3394c4a881
-0	57	1782281089119944483	CMakeFiles/main.dir/game_main.cpp.o	f4850cb9202c627c
-0	63	1782281249571675953	build.ninja	adf0a276e469e82c
-0	7	0	clean	fc2343633bf3679f
-1	54	1782281249645844191	CMakeFiles/main.dir/game_main.cpp.o	f4850cb9202c627c
-55	108	1782281249697802508	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libmain.so	a787f5e3b1b142fb
-0	7	0	clean	fc2343633bf3679f
 0	5	0	clean	fc2343633bf3679f
-0	43	1782281321640989133	CMakeFiles/main.dir/game_main.cpp.o	f4850cb9202c627c
-43	99	1782281321694916006	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libmain.so	a787f5e3b1b142fb
-0	11	0	clean	fc2343633bf3679f
-0	194	1782283356309709065	CMakeFiles/main.dir/game_main.cpp.o	f4850cb9202c627c
-194	324	1782283356436868394	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libmain.so	a787f5e3b1b142fb
-0	6	0	clean	fc2343633bf3679f
-0	253	1782285093296419255	CMakeFiles/main.dir/game_main.cpp.o	f4850cb9202c627c
-253	396	1782285093438943428	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libmain.so	a787f5e3b1b142fb
-0	6	0	clean	fc2343633bf3679f
-0	5	0	clean	fc2343633bf3679f
+0	63	1782553429726832455	build.ninja	adf0a276e469e82c
 0	45	1782287982887486890	CMakeFiles/main.dir/game_main.cpp.o	f4850cb9202c627c
 45	103	1782287982943378299	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libmain.so	a787f5e3b1b142fb
+0	39	1782553429783291588	CMakeFiles/samuraijack.dir/game_main.cpp.o	1964eef2f2eac420
+39	92	1782553429834792023	/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/armeabi-v7a/libsamuraijack.so	236c4e3b623707e9

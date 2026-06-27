@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -189,10 +190,8 @@ fun SplashScreen(onStart: () -> Unit) {
     var animationStep by remember { mutableIntStateOf(0) }
     
     LaunchedEffect(Unit) {
-        delay(1000)
-        animationStep = 1 // Show company presents (Powered by Thigazhini Labs)
-        delay(2000)
-        animationStep = 2 // Slash flash logo title
+        delay(600)
+        animationStep = 2
     }
 
     val backgroundAlpha by animateFloatAsState(
@@ -238,29 +237,7 @@ fun SplashScreen(onStart: () -> Unit) {
             )
         }
 
-        // Step 1: Powered by Thigazhini Labs
-        if (animationStep == 1) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "POWERED BY",
-                    color = Color.Gray,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 4.sp,
-                    fontFamily = FontFamily.SansSerif,
-                    modifier = Modifier.alpha(0.8f)
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "THIGAZHINI LABS",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 8.sp,
-                    fontFamily = FontFamily.SansSerif
-                )
-            }
-        }
+
 
         // Step 2: Main Slash and Logo
         if (animationStep >= 2) {
@@ -1731,18 +1708,11 @@ fun GameplayHUD(
         }
 
 
-        // Help Instructions Overlay
-        Text(
-            text = "JOYSTICK: MOVE | BUTTONS: ATTACK, DEFEND, JUMP",
-            color = Color.Gray,
-            fontSize = 9.sp,
-            letterSpacing = 1.sp,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 8.dp)
-        )
+
     }
 }
+
+private val TWO_PI = kotlin.math.PI.toFloat() * 2f
 
 @Composable
 fun StormOverlay(isInside: Boolean) {
@@ -1750,53 +1720,192 @@ fun StormOverlay(isInside: Boolean) {
     if (targetAlpha <= 0f) return
 
     val transition = rememberInfiniteTransition(label = "storm")
-    val rainFallT by transition.animateFloat(
+
+    val rainT by transition.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(animation = tween(600, easing = LinearEasing)),
-        label = "rainFallT"
+        animationSpec = infiniteRepeatable(animation = tween(900, easing = LinearEasing)),
+        label = "rainT"
+    )
+
+    val rainT2 by transition.animateFloat(
+        initialValue = 0.3f, targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(animation = tween(1300, easing = LinearEasing)),
+        label = "rainT2"
+    )
+
+    val windPhase by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(5000, easing = LinearEasing)),
+        label = "windPhase"
     )
 
     Canvas(modifier = Modifier.fillMaxSize().alpha(targetAlpha)) {
-        val width = size.width
-        val height = size.height
+        val w = size.width
+        val h = size.height
+        val baseColor = Color(0xFFB0C8E8)
 
-        // 1. Draw Rain Streaks
-        for (i in 0 until 150) {
-            val seed = i * 499L
-            val randDepth = ((seed * 17) % 1000) / 1000f
+        val windRad = windPhase * TWO_PI
+        val windAngle = kotlin.math.sin(windRad) * 10f + 5f
+
+        val gustX = floatArrayOf(0.06f, 0.18f, 0.30f, 0.38f, 0.50f, 0.60f, 0.72f, 0.84f, 0.94f)
+        val gustSpread = floatArrayOf(0.05f, 0.07f, 0.04f, 0.09f, 0.06f, 0.08f, 0.05f, 0.07f, 0.04f)
+
+        for (g in gustX.indices) {
+            val gSeed = g * 577L
+            val count = 6 + ((gSeed * 13) % 5).toInt()
+            for (d in 0 until count) {
+                val dSeed = gSeed + d * 233L
+                val offsetX = (((dSeed * 41) % 1000) / 1000f - 0.5f) * gustSpread[g] * 2f
+                val phase = ((dSeed * 17) % 1000) / 1000f
+                val speed = 0.7f + ((dSeed * 11) % 100) / 400f
+                val yPos = ((rainT * speed) + phase) % 1f
+                val x = (gustX[g] + offsetX) * w
+                val len = 12f + ((dSeed * 7) % 8)
+                val a = windAngle + ((dSeed * 3) % 7).toFloat() - 3f
+                val alpha = 0.06f + ((dSeed * 19) % 1000) / 8000f
+
+                drawLine(
+                    color = baseColor.copy(alpha = alpha),
+                    start = Offset(x, yPos * h),
+                    end = Offset(x + a, yPos * h + len),
+                    strokeWidth = 0.7f,
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+
+        for (g in gustX.indices) {
+            val gSeed = g * 733L + 100
+            val count = 8 + ((gSeed * 11) % 7).toInt()
+            for (d in 0 until count) {
+                val dSeed = gSeed + d * 199L
+                val offsetX = (((dSeed * 37) % 1000) / 1000f - 0.5f) * gustSpread[g] * 2f
+                val phase = ((dSeed * 13) % 1000) / 1000f
+                val speed = 1.0f + ((dSeed * 7) % 100) / 300f
+                val yPos = ((rainT * speed) + phase) % 1f
+                val x = (gustX[g] + offsetX) * w
+                val len = 22f + ((dSeed * 5) % 14)
+                val a = windAngle + ((dSeed * 5) % 9).toFloat() - 4f
+                val alpha = 0.10f + ((dSeed * 17) % 1000) / 5000f
+
+                drawLine(
+                    color = baseColor.copy(alpha = alpha),
+                    start = Offset(x, yPos * h),
+                    end = Offset(x + a, yPos * h + len),
+                    strokeWidth = 1.1f + ((dSeed * 3) % 5) / 10f,
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+
+        for (i in 0 until 55) {
+            val seed = i * 839L + 200
             val randX = ((seed * 31) % 1000) / 1000f
-            val speed = 0.8f + (randDepth * 1.2f)
-            val yPos = ((rainFallT * speed) + (randX)) % 1f
-            val x = (randX * width)
-            val y = yPos * height
-            
+            val phase = ((seed * 11) % 1000) / 1000f
+            val speed = 1.4f + ((seed * 3) % 100) / 180f
+            val yPos = ((rainT2 * speed) + phase) % 1f
+            val x = randX * w
+            val len = 32f + ((seed * 7) % 18)
+            val gustOffset = kotlin.math.sin(randX * TWO_PI * 3f + windRad) * 6f
+            val a = windAngle + gustOffset + ((seed * 5) % 7).toFloat() - 3f
+            val alpha = 0.20f + ((seed * 13) % 1000) / 2500f
+            val topAlpha = (alpha * (1f - (yPos * 0.3f)).coerceAtLeast(0.35f))
+            val baseW = 2.0f + ((seed * 5) % 7) / 10f
+            val tipW = baseW * 0.35f
+
+            val endX = x + a
+            val endY = yPos * h + len
+            val sx = x
+            val sy = yPos * h
+
             drawLine(
-                color = Color(0xFFDEEFFF).copy(alpha = 0.2f + (randDepth * 0.3f)),
-                start = Offset(x, y),
-                end = Offset(x - 2f, y + 20f),
-                strokeWidth = 1.2f,
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
+                color = baseColor.copy(alpha = topAlpha * 0.5f),
+                start = Offset(sx - tipW / 2f, sy),
+                end = Offset(endX - baseW / 2f, endY),
+                strokeWidth = tipW,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = baseColor.copy(alpha = topAlpha),
+                start = Offset(sx, sy),
+                end = Offset(endX, endY),
+                strokeWidth = baseW * 0.6f,
+                cap = StrokeCap.Round
             )
         }
 
-        // 2. Realistic Ground Impact (Splashes)
-        // Only draw these near the bottom "ground" area
-        for (i in 0 until 40) {
-            val seed = i * 999L
-            val randX = ((seed * 7) % 1000) / 1000f
-            val splashX = randX * width
-            val splashY = height - 10f // Near the bottom of the screen
-            
-            // Randomly pulsate ripples
-            val rippleScale = (rainFallT * 5f) % 1f
-            if (rippleScale > 0.5f) {
-                drawCircle(
-                    color = Color(0xFFDEEFFF).copy(alpha = (1f - rippleScale) * 0.3f),
-                    radius = rippleScale * 15f,
-                    center = Offset(splashX, splashY),
-                    style = Stroke(width = 2f)
-                )
+        val groundY = h - 10f
+        for (i in 0 until 28) {
+            val seed = i * 641L + 300
+            val randX = ((seed * 23) % 1000) / 1000f
+            val splashT = (rainT * 3.5f + ((seed * 11) % 1000) / 1000f) % 1f
+            val splashX = randX * w
+
+            val rippleR = splashT * 28f
+            drawCircle(
+                color = baseColor.copy(alpha = (1f - splashT) * 0.18f),
+                radius = rippleR,
+                center = Offset(splashX, groundY),
+                style = Stroke(width = 1.2f * (1f - splashT))
+            )
+
+            val crownCount = 3 + ((seed * 7) % 4).toInt()
+            for (d in 0 until crownCount) {
+                val dSeed = seed + d * 31L
+                val cx = ((dSeed * 13) % 1000) / 1000f * 24f - 12f
+                val cy = ((dSeed * 7) % 1000) / 1000f * 12f
+                val t = (splashT * 1.8f) % 1f
+                val alpha = (1f - t) * 0.45f
+                if (alpha > 0f) {
+                    val dy = cy * (1f - t) * (1f - t)
+                    val dx = cx * (1f - t)
+                    drawLine(
+                        color = baseColor.copy(alpha = alpha),
+                        start = Offset(splashX + dx - 1f, groundY - dy),
+                        end = Offset(splashX + dx + 1f, groundY - dy + 4f),
+                        strokeWidth = 1.2f,
+                        cap = StrokeCap.Round
+                    )
+                }
             }
+        }
+
+        for (i in 0 until 18) {
+            val seed = i * 271L + 400
+            val randX = ((seed * 17) % 1000) / 1000f
+            val mistT = (rainT * 2.2f + ((seed * 5) % 1000) / 1000f) % 1f
+            val mx = randX * w
+            val spread = mistT * 22f
+            val mAlpha = (1f - mistT) * 0.10f
+            drawCircle(
+                color = baseColor.copy(alpha = mAlpha),
+                radius = spread,
+                center = Offset(mx, groundY - 3f),
+                style = Stroke(width = 1f)
+            )
+        }
+
+        for (i in 0 until 7) {
+            val seed = i * 919L + 500
+            val randX = ((seed * 43) % 1000) / 1000f
+            val phase = ((seed * 23) % 1000) / 1000f
+            val speed = 0.15f + ((seed * 7) % 100) / 600f
+            val yPos = ((rainT * speed) + phase) % 1f
+            val x = randX * w
+            val drift = kotlin.math.sin(randX * TWO_PI * 0.7f + windRad * 0.5f) * 8f
+            val r = 4f + ((seed * 11) % 6)
+            val alpha = 0.04f + ((seed * 13) % 1000) / 6000f
+            drawCircle(
+                color = baseColor.copy(alpha = alpha),
+                radius = r,
+                center = Offset(x + drift, yPos * h),
+                style = Stroke(width = 1.5f)
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = alpha * 0.08f),
+                radius = r * 0.25f,
+                center = Offset(x + drift - r * 0.3f, yPos * h - r * 0.3f)
+            )
         }
     }
 }

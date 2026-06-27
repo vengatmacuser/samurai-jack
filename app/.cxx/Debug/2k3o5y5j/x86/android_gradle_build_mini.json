@@ -17,10 +17,10 @@
     "{LIST_OF_TARGETS_TO_BUILD}"
   ],
   "libraries": {
-    "main::@6890427a1f51a3e7e1df": {
-      "artifactName": "main",
+    "samuraijack::@6890427a1f51a3e7e1df": {
+      "artifactName": "samuraijack",
       "abi": "x86",
-      "output": "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so",
+      "output": "/Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so",
       "runtimeFiles": []
     }
   }

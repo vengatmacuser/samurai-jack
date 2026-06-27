@@ -48,7 +48,7 @@ class MainActivity : GameActivity(), SensorEventListener {
 
     companion object {
         init {
-            System.loadLibrary("main")
+            System.loadLibrary("samuraijack")
         }
     }
 
@@ -61,7 +61,7 @@ class MainActivity : GameActivity(), SensorEventListener {
     // Core Game States
     var gameState by mutableStateOf(GameState.SPLASH)
     var currentStageIndex by mutableIntStateOf(0)
-    var unlockedStageCount by mutableIntStateOf(13)
+    var unlockedStageCount by mutableIntStateOf(1)
     var isStage1InsideMine by mutableStateOf(false)
     
     // Player statistics
@@ -445,7 +445,7 @@ class MainActivity : GameActivity(), SensorEventListener {
     }
 
     private fun startGame() {
-        gameState = GameState.STAGE_SELECT
+        enterStage(0)
     }
 
     private fun enterStage(index: Int) {
@@ -1323,13 +1323,7 @@ class MainActivity : GameActivity(), SensorEventListener {
             if (gameState == GameState.INTRO_CUTSCENE) {
                 gameState = GameState.GAMEPLAY
             } else {
-                // Outro complete, proceed or finish game
-                if (currentStageIndex == 12) {
-                    gameState = GameState.GAME_COMPLETE
-                } else {
-                    unlockedStageCount = (unlockedStageCount).coerceAtLeast(currentStageIndex + 2)
-                    gameState = GameState.STAGE_SELECT
-                }
+                gameState = GameState.MAIN_MENU
             }
         }
     }
@@ -1515,7 +1509,7 @@ class MainActivity : GameActivity(), SensorEventListener {
 
         // Apply joystick movement vectors
         if (joystickMoveVec.x != 0f || joystickMoveVec.z != 0f) {
-            val moveSpeed = 0.06f
+            val moveSpeed = 0.14f
             val limitZ = if (currentStageIndex == 0) floatArrayOf(-500f, 1500f) else floatArrayOf(-35f, 35f)
             
             if (currentStageIndex == 0) {

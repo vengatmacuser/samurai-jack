@@ -41,41 +41,41 @@ include CMakeFiles/rules.ninja
 
 cmake_ninja_workdir = /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/x86/
 # =============================================================================
-# Object build statements for SHARED_LIBRARY target main
+# Object build statements for SHARED_LIBRARY target samuraijack
 
 
 #############################################
-# Order-only phony target for main
+# Order-only phony target for samuraijack
 
-build cmake_object_order_depends_target_main: phony || CMakeFiles/main.dir
+build cmake_object_order_depends_target_samuraijack: phony || CMakeFiles/samuraijack.dir
 
-build CMakeFiles/main.dir/game_main.cpp.o: CXX_COMPILER__main_Debug /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/src/main/cpp/game_main.cpp || cmake_object_order_depends_target_main
-  DEFINES = -Dmain_EXPORTS
-  DEP_FILE = CMakeFiles/main.dir/game_main.cpp.o.d
+build CMakeFiles/samuraijack.dir/game_main.cpp.o: CXX_COMPILER__samuraijack_Debug /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/src/main/cpp/game_main.cpp || cmake_object_order_depends_target_samuraijack
+  DEFINES = -Dsamuraijack_EXPORTS
+  DEP_FILE = CMakeFiles/samuraijack.dir/game_main.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC
   INCLUDES = -isystem /Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/include
-  OBJECT_DIR = CMakeFiles/main.dir
-  OBJECT_FILE_DIR = CMakeFiles/main.dir
+  OBJECT_DIR = CMakeFiles/samuraijack.dir
+  OBJECT_FILE_DIR = CMakeFiles/samuraijack.dir
 
 
 # =============================================================================
-# Link build statements for SHARED_LIBRARY target main
+# Link build statements for SHARED_LIBRARY target samuraijack
 
 
 #############################################
-# Link the shared library /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so
+# Link the shared library /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so
 
-build /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so: CXX_SHARED_LIBRARY_LINKER__main_Debug CMakeFiles/main.dir/game_main.cpp.o | /Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/libs/android.x86/libgame-activity_static.a
+build /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so: CXX_SHARED_LIBRARY_LINKER__samuraijack_Debug CMakeFiles/samuraijack.dir/game_main.cpp.o | /Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/libs/android.x86/libgame-activity_static.a
   LANGUAGE_COMPILE_FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info
   LINK_FLAGS = -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384
   LINK_LIBRARIES = -landroid  -llog  -Wl,--whole-archive  /Users/vengateswaran/.gradle/caches/9.6.0/transforms/03cbb9464d8c8bf8fd5065f175ca1f05/transformed/jetified-games-activity-4.4.2/prefab/modules/game-activity_static/libs/android.x86/libgame-activity_static.a  -Wl,--no-whole-archive  -latomic -lm
-  OBJECT_DIR = CMakeFiles/main.dir
+  OBJECT_DIR = CMakeFiles/samuraijack.dir
   POST_BUILD = :
   PRE_LINK = :
-  SONAME = libmain.so
+  SONAME = libsamuraijack.so
   SONAME_FLAG = -Wl,-soname,
-  TARGET_FILE = /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so
-  TARGET_PDB = main.so.dbg
+  TARGET_FILE = /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so
+  TARGET_PDB = samuraijack.so.dbg
 
 
 #############################################
@@ -104,9 +104,9 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 # =============================================================================
 # Target aliases.
 
-build libmain.so: phony /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so
+build libsamuraijack.so: phony /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so
 
-build main: phony /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so
+build samuraijack: phony /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so
 
 # =============================================================================
 # Folder targets.
@@ -116,7 +116,7 @@ build main: phony /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build
 #############################################
 # Folder: /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/.cxx/Debug/2k3o5y5j/x86
 
-build all: phony /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libmain.so
+build all: phony /Users/vengateswaran/Documents/Projects/Samurai_Jack/app/build/intermediates/cxx/Debug/2k3o5y5j/obj/x86/libsamuraijack.so
 
 # =============================================================================
 # Built-in targets
