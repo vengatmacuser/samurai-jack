@@ -84,26 +84,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
     }
 
     private fun getStageBackgroundResId(stageIndex: Int): Int {
-        return when (stageIndex) {
-            0 -> if (cameraTarget.z >= 0f) {
-                com.thigazhini_labs.samuraijack.R.drawable.bg_frosthollow
-            } else {
-                com.thigazhini_labs.samuraijack.R.drawable.bg_stage1_outside
-            }
-            1 -> com.thigazhini_labs.samuraijack.R.drawable.bg_forest
-            2 -> com.thigazhini_labs.samuraijack.R.drawable.bg_jungle
-            3 -> com.thigazhini_labs.samuraijack.R.drawable.bg_village
-            4 -> com.thigazhini_labs.samuraijack.R.drawable.bg_port
-            5 -> com.thigazhini_labs.samuraijack.R.drawable.bg_port
-            6 -> com.thigazhini_labs.samuraijack.R.drawable.bg_port
-            7 -> com.thigazhini_labs.samuraijack.R.drawable.bg_port
-            8 -> com.thigazhini_labs.samuraijack.R.drawable.bg_forest
-            9 -> com.thigazhini_labs.samuraijack.R.drawable.bg_jungle
-            10 -> com.thigazhini_labs.samuraijack.R.drawable.bg_desert
-            11 -> com.thigazhini_labs.samuraijack.R.drawable.bg_desert
-            12 -> com.thigazhini_labs.samuraijack.R.drawable.bg_village
-            else -> com.thigazhini_labs.samuraijack.R.drawable.bg_village
-        }
+        return com.thigazhini_labs.samuraijack.R.drawable.bg_stage1_outside
     }
 
     // Shader handles
@@ -208,20 +189,8 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
         GLES30.glUniform1f(fogDensityLink, stage.fogDensity)
 
         // Stage-specific directional light for stronger mood control
-        if (currentStageIndex == 0) {
-            // Antarctic mine progression: brighter cold exterior -> darker corrupted depths
-            val depthFactor = ((cameraTarget.z - 22f) / 54f).coerceIn(0f, 1f)
-            GLES30.glUniform3f(dirLightDirLink, -0.8f, -1.15f, 0.26f)
-            GLES30.glUniform3f(
-                dirLightColorLink,
-                0.42f - 0.18f * depthFactor,
-                0.48f - 0.22f * depthFactor,
-                0.58f - 0.26f * depthFactor
-            )
-        } else {
-            GLES30.glUniform3f(dirLightDirLink, -1.2f, -0.8f, 0.4f)
-            GLES30.glUniform3f(dirLightColorLink, 1.0f, 0.95f, 0.90f)
-        }
+        GLES30.glUniform3f(dirLightDirLink, -1.2f, -0.8f, 0.4f)
+        GLES30.glUniform3f(dirLightColorLink, 1.0f, 0.95f, 0.90f)
 
         // Point light (pulsing lasers / sword impact glow)
         GLES30.glUniform3f(pointLightPosLink, pointLightPos.x, pointLightPos.y, pointLightPos.z)
@@ -265,9 +234,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
                 
                 // Silhouette rendering modes (0 = normal, 1 = black body, 2 = glowing parts)
                 GLES30.glUniform1i(silhouetteModeLink, mesh.silhouetteMode)
-                val characterBoost = if (mesh.isHero) {
-                    if (currentStageIndex == 0) 0.72f else 0.28f
-                } else 0f
+                val characterBoost = if (mesh.isHero) 0.28f else 0f
                 GLES30.glUniform1f(characterBoostLink, characterBoost)
 
                 // Bind texture if in textured mode

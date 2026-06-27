@@ -7,12 +7,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -27,8 +24,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thigazhini_labs.samuraijack.GameState
 import com.thigazhini_labs.samuraijack.R
-import com.thigazhini_labs.samuraijack.stages.Stages
 import kotlinx.coroutines.delay
 
 @Composable
@@ -53,7 +47,6 @@ fun GameUI(
     gameState: GameState,
     currentStageIndex: Int,
     isStage1InsideMine: Boolean,
-    unlockedStageCount: Int,
     playerHealth: Float,
     playerSwordEnergy: Float,
     isHealthRegenActive: Boolean,
@@ -65,8 +58,7 @@ fun GameUI(
     playerCrystals: Int,
     onStartGame: () -> Unit,
     onSelectStage: (Int) -> Unit,
-    onNextStage: () -> Unit,
-    onResumeGame: () -> Unit,
+
     onRetryStage: () -> Unit,
     onBackToMenu: () -> Unit,
     onAdvanceText: () -> Unit,
@@ -82,8 +74,6 @@ fun GameUI(
         when (gameState) {
             GameState.SPLASH -> SplashScreen(onStartGame)
             GameState.MAIN_MENU -> MainMenuScreen(onStartGame, onSelectStage = { onSelectStage(-1) })
-            GameState.STAGE_SELECT -> StageSelectScreen(unlockedStageCount, onSelectStage, onBackToMenu)
-            GameState.TRAVEL_TRANSITION -> TravelTransitionScreen()
             GameState.INTRO_CUTSCENE, GameState.OUTRO_CUTSCENE -> CutsceneOverlay(typedText, onAdvanceText)
             GameState.GAMEPLAY -> GameplayHUD(
                 playerHealth = playerHealth,
@@ -100,7 +90,6 @@ fun GameUI(
                 onBlock = onBlock
             )
             GameState.GAME_OVER -> GameOverScreen(onRetryStage, onBackToMenu)
-            GameState.GAME_COMPLETE -> GameCompleteScreen(onBackToMenu)
         }
 
         // Gameplay combat overlays (Slash, flash, speed lines) based on jackState
@@ -433,8 +422,6 @@ fun MainMenuScreen(onStart: () -> Unit, onSelectStage: () -> Unit) {
                     Spacer(modifier = Modifier.height(20.dp))
 
                     MenuButton("CONTINUE ADVENTURE", onStart, isPrimary = true)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    MenuButton("CHRONICLES MAP", onSelectStage, isPrimary = false)
                 }
             }
         }
@@ -476,474 +463,6 @@ fun MenuButton(text: String, onClick: () -> Unit, isPrimary: Boolean = false) {
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp
         )
-    }
-}
-
-data class MapNode(
-    val index: Int,
-    val x: Float, // fraction of width
-    val y: Float  // fraction of height
-)
-
-fun getMapIconResId(index: Int): Int {
-    return when (index) {
-        0 -> R.drawable.fantasy_map_icons_object_01 // 1: burning castle
-        1 -> R.drawable.fantasy_map_icons_object_02 // 2: dunes training
-        2 -> R.drawable.fantasy_map_icons_object_03 // 3: bridge crossing
-        3 -> R.drawable.fantasy_map_icons_object_04 // 4: sword in stone
-        4 -> R.drawable.fantasy_map_icons_object_06 // 5: dark red castle (formerly 06)
-        5 -> R.drawable.fantasy_map_icons_object_07 // 6: portal (formerly 07)
-        6 -> R.drawable.fantasy_map_icons_object_05 // 7: city of machines (formerly 05)
-        7 -> R.drawable.fantasy_map_icons_object_08 // 8: archer village
-        8 -> R.drawable.fantasy_map_icons_object_11 // 9: highlands floating island (formerly 11)
-        9 -> R.drawable.fantasy_map_icons_object_09 // 10: escape from fortress (formerly 09)
-        10 -> R.drawable.fantasy_map_icons_object_10 // 11: three-eyed beast
-        11 -> R.drawable.fantasy_map_icons_object_12 // 12: lava guardian
-        12 -> R.drawable.fantasy_map_icons_object_13 // 13: path of the ronin torii
-        else -> R.drawable.fantasy_map_icons_object_01
-    }
-}
-
-@Composable
-fun StageSelectScreen(unlockedStageCount: Int, onSelectStage: (Int) -> Unit, onBack: () -> Unit) {
-    var selectedStageIndex by remember { mutableIntStateOf(0) }
-    val currentStage = Stages.stagesList.getOrNull(selectedStageIndex) ?: Stages.stagesList[0]
-    val isSelectedUnlocked = selectedStageIndex < unlockedStageCount
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF0F0E13)) // solid background under map
-    ) {
-        // Main map background image with reduced opacity to enhance contrast of icons and text
-        Image(
-            painter = painterResource(id = R.drawable.bg_map),
-            contentDescription = "Campaign Map",
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize(),
-            alpha = 0.9f
-        )
-
-        // Subtle dark overlay to ground the UI elements
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.05f)) // extremely light so map art stays fully clear
-        )
-
-        // Atmospheric "fear background" vignette overlay (dark red/black glow at screen borders)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.3f),
-                            Color(0xFF1E0505).copy(alpha = 0.8f) // Deep blood red fear glow
-                        ),
-                        radius = 1600f
-                    )
-                )
-        )
-
-        // Map Node Hotspots overlay
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val containerWidth = maxWidth
-            val containerHeight = maxHeight
-
-            val mapNodes = listOf(
-                // Sequence matches physical progression trail: 1 -> 2 -> 3 -> 4 -> 8 -> 5 -> 6 -> 7 -> 9 -> 10 -> 11 -> 12 -> 13
-                MapNode(1, 0.15f, 0.20f),
-                MapNode(2, 0.39f, 0.22f),
-                MapNode(3, 0.67f, 0.18f),
-                MapNode(4, 0.87f, 0.25f),
-                MapNode(8, 0.85f, 0.53f),
-                MapNode(5, 0.67f, 0.46f),
-                MapNode(6, 0.45f, 0.45f),
-                MapNode(7, 0.13f, 0.47f),
-                MapNode(9, 0.12f, 0.70f),
-                MapNode(10, 0.35f, 0.72f),
-                MapNode(11, 0.59f, 0.69f),
-                MapNode(12, 0.85f, 0.78f),
-                MapNode(13, 0.48f, 0.87f)
-            )
-
-            // Draw connecting path dashed line
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val path = androidx.compose.ui.graphics.Path()
-                mapNodes.forEachIndexed { i, node ->
-                    val x = size.width * node.x
-                    val y = size.height * node.y
-                    if (i == 0) {
-                        path.moveTo(x, y)
-                    } else {
-                        path.lineTo(x, y)
-                    }
-                }
-                drawPath(
-                    path = path,
-                    color = Color(0xFFD41414), // Red path line
-                    style = Stroke(
-                        width = 4f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 10f), 0f)
-                    )
-                )
-            }
-
-            mapNodes.forEach { node ->
-                val idx = node.index - 1
-                val isUnlocked = idx < unlockedStageCount
-                val isSelected = selectedStageIndex == idx
-
-                // Pulsing animation for selected/active nodes
-                val infiniteTransition = rememberInfiniteTransition(label = "pulse_${node.index}")
-                val pulseScale by infiniteTransition.animateFloat(
-                    initialValue = 0.95f,
-                    targetValue = 1.15f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1200, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "scale"
-                )
-                val pulseAlpha by infiniteTransition.animateFloat(
-                    initialValue = 0.6f,
-                    targetValue = 0.1f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1200, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "alpha"
-                )
-
-                // Dynamically size key milestones (Aku's Castle Node 5, Time Portal Node 6, Highlands Node 9, Ronin Torii Node 13)
-                val isBigNode = node.index == 5 || node.index == 6 || node.index == 9 || node.index == 13
-                val widthDp = if (isBigNode) 160.dp else 130.dp
-                val heightDp = if (isBigNode) 100.dp else 80.dp
-                val halfWidth = if (isBigNode) 80.dp else 65.dp
-                val halfHeight = if (isBigNode) 50.dp else 40.dp
-
-                // Position node container box centered around path coordinate
-                Box(
-                    modifier = Modifier
-                        .size(width = widthDp, height = heightDp)
-                        .absoluteOffset(
-                            x = containerWidth * node.x - halfWidth,
-                            y = containerHeight * node.y - halfHeight
-                        )
-                        .alpha(if (isUnlocked) 1.0f else 0.45f)
-                        .clickable { selectedStageIndex = idx },
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Glowing red aura behind selected node
-                    if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = widthDp - 15.dp, height = heightDp - 15.dp)
-                                .graphicsLayer {
-                                    scaleX = pulseScale
-                                    scaleY = pulseScale
-                                    alpha = pulseAlpha
-                                }
-                                .background(
-                                    color = Color(0xFFD41414),
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                        )
-                    }
-
-                    // Main custom illustrated fantasy icon (with built-in text label)
-                    Image(
-                        painter = painterResource(id = getMapIconResId(idx)),
-                        contentDescription = "Stage ${node.index} Icon",
-                        modifier = Modifier.size(width = widthDp, height = heightDp),
-                        contentScale = ContentScale.Fit
-                    )
-
-                    // Small gold circular badge displaying the stage number
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .align(Alignment.TopEnd)
-                            .absoluteOffset(
-                                x = if (isBigNode) (-24).dp else (-12).dp,
-                                y = if (isBigNode) 10.dp else 6.dp
-                            )
-                            .background(
-                                color = Color(0xFFFFD700), // Gold
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = Color.Black,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${node.index}",
-                            color = Color.Black,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        // Unified Glassmorphic Top Header Bar (acting as both Header and selected details card)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.90f),
-                            Color(0xFF1E0505).copy(alpha = 0.80f),
-                            Color.Transparent
-                        )
-                    )
-                )
-                .padding(horizontal = 24.dp, vertical = 12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Left side: Back to Menu button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .border(1.dp, Color(0xFFD41414).copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                        .clickable { onBack() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "BACK TO MENU",
-                        color = Color.LightGray,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
-                }
-
-                // Center: Current Selected Stage Details
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "PORTAL ${selectedStageIndex + 1}: ${currentStage.title}",
-                        color = Color(0xFFFFCC00),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(1.dp))
-                    Text(
-                        text = currentStage.subtitle.uppercase(),
-                        color = Color(0xFFD41414), // Red fear subtitle
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 2.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = currentStage.objective,
-                        color = Color.LightGray,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                // Right side: Enter Portal action button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            if (isSelectedUnlocked) {
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFF8F0F0F), Color(0xFFD41414), Color(0xFF8F0F0F))
-                                )
-                            } else {
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color.DarkGray, Color.Gray, Color.DarkGray)
-                                )
-                            }
-                        )
-                        .border(
-                            1.dp,
-                            if (isSelectedUnlocked) Color.White.copy(alpha = 0.3f) else Color.Transparent,
-                            RoundedCornerShape(20.dp)
-                        )
-                        .clickable(enabled = isSelectedUnlocked) {
-                            onSelectStage(selectedStageIndex)
-                        }
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (isSelectedUnlocked) "ENTER PORTAL" else "LOCKED",
-                        color = if (isSelectedUnlocked) Color.White else Color.LightGray,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun TravelTransitionScreen() {
-    val transition = rememberInfiniteTransition(label = "tartakovsky")
-    
-    // Panel sliding animations
-    val topPanelOffset by transition.animateFloat(
-        initialValue = -500f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "topPanel"
-    )
-    
-    val bottomPanelOffset by transition.animateFloat(
-        initialValue = 500f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "bottomPanel"
-    )
-    
-    val speedLinesScroll by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "speedLines"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF070709))
-    ) {
-        // Draw speed lines in the background
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-            val lineCount = 15
-            for (i in 0 until lineCount) {
-                val y = (height / lineCount) * i
-                val xStart = (speedLinesScroll + (i * 123)) % width
-                val xEnd = (xStart + 150f).coerceAtMost(width)
-                drawLine(
-                    color = Color(0xFF3F0B0B),
-                    start = androidx.compose.ui.geometry.Offset(xStart, y),
-                    end = androidx.compose.ui.geometry.Offset(xEnd, y),
-                    strokeWidth = 3f
-                )
-            }
-        }
-
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Top Panel (slides in red/black block)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .offset(x = topPanelOffset.dp)
-                    .background(Color(0xFF8F0F0F))
-                    .border(2.dp, Color.Black)
-            ) {
-                // Diagonal speed lines
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    for (i in 0..10) {
-                        drawLine(
-                            color = Color.Black.copy(alpha = 0.3f),
-                            start = androidx.compose.ui.geometry.Offset(i * 150f - speedLinesScroll % 150f, 0f),
-                            end = androidx.compose.ui.geometry.Offset(i * 150f - speedLinesScroll % 150f - 50f, size.height),
-                            strokeWidth = 8f
-                        )
-                    }
-                }
-            }
-
-            // Middle Panel (Eye close-up, stark white/black contrast)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp)
-                    .background(Color.Black)
-                    .border(3.dp, Color(0xFFFFCC00))
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.black_eyes),
-                    contentDescription = "Jack Eyes Close-up",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(0.85f)
-                )
-                
-                // Overlay text
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "EXILING THROUGH TIME...",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 6.sp,
-                        fontFamily = FontFamily.SansSerif,
-                        modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.6f))
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            // Bottom Panel (slides in from right)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .offset(x = bottomPanelOffset.dp)
-                    .background(Color(0xFF1B0B33))
-                    .border(2.dp, Color.Black)
-            ) {
-                // Vertical grid lines
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    for (i in 0..10) {
-                        drawLine(
-                            color = Color(0xFF9900FF).copy(alpha = 0.3f),
-                            start = androidx.compose.ui.geometry.Offset(i * 150f + speedLinesScroll % 150f, 0f),
-                            end = androidx.compose.ui.geometry.Offset(i * 150f + speedLinesScroll % 150f, size.height),
-                            strokeWidth = 4f
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -1214,10 +733,10 @@ fun GameplayHUD(
                 .padding(start = 2.dp, top = 4.dp)
                 .widthIn(max = 220.dp)
                 .background(
-                    Color(0xB3121419),
+                    Color(0xCC0D0F14),
                     RoundedCornerShape(12.dp)
                 )
-                .border(1.dp, Color(0xFF7A2A2A).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .border(1.dp, Color(0xFF5A3A3A).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1225,11 +744,16 @@ fun GameplayHUD(
                 modifier = Modifier
                     .size(52.dp)
                     .border(
-                        2.dp,
-                        if (damageFlashAlpha > 0f) Color(0xFFFF4444) else Color(0x66DCEEFF),
+                        1.5.dp,
+                        if (damageFlashAlpha > 0f) Color(0xFFFF4444) else Color(0x88AEDFFF),
                         CircleShape
                     )
-                    .background(Color(0xCC0D0F14), CircleShape),
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color(0x33223344), Color(0xCC0D0F14))
+                        ),
+                        CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (isHealthRegenActive) {
@@ -1248,9 +772,16 @@ fun GameplayHUD(
                     contentDescription = "Samurai Jack Portrait",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                 )
+                if (damageFlashAlpha > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .background(Color.White.copy(alpha = damageFlashAlpha * 0.25f), CircleShape)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(7.dp))
@@ -1259,11 +790,11 @@ fun GameplayHUD(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(16.dp)
+                        .height(14.dp)
                         .background(Color(0x80201010), RoundedCornerShape(7.dp))
                         .border(
                             1.dp,
-                            if (lowHp) Color(0xFFFF5252).copy(alpha = lowHpPulse) else Color(0xAA7A2A2A),
+                            if (lowHp) Color(0xFFFF5252).copy(alpha = lowHpPulse) else Color(0xAA6A2A2A),
                             RoundedCornerShape(7.dp)
                         )
                 ) {
@@ -1286,7 +817,7 @@ fun GameplayHUD(
                             .fillMaxHeight()
                             .fillMaxWidth((animatedHealth / 100f).coerceIn(0f, 1f))
                             .background(
-                                Color.White.copy(alpha = 0.16f),
+                                Color.White.copy(alpha = 0.15f),
                                 RoundedCornerShape(7.dp)
                             )
                     )
@@ -1294,7 +825,7 @@ fun GameplayHUD(
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .background(Color.White.copy(alpha = damageFlashAlpha * 0.45f), RoundedCornerShape(7.dp))
+                                .background(Color.White.copy(alpha = damageFlashAlpha * 0.35f), RoundedCornerShape(7.dp))
                         )
                     }
                     if (isHealthRegenActive) {
@@ -1302,25 +833,15 @@ fun GameplayHUD(
                             val x1 = size.width * regenFlow
                             val x2 = (size.width * ((regenFlow + 0.35f) % 1f))
                             val x3 = (size.width * ((regenFlow + 0.7f) % 1f))
-                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.8f), radius = 1.8f, center = Offset(x1, size.height * 0.45f))
-                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.65f), radius = 1.4f, center = Offset(x2, size.height * 0.62f))
-                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.75f), radius = 1.6f, center = Offset(x3, size.height * 0.35f))
+                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.8f), radius = 1.6f, center = Offset(x1, size.height * 0.45f))
+                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.65f), radius = 1.2f, center = Offset(x2, size.height * 0.62f))
+                            drawCircle(Color(0xFF7ED3FF).copy(alpha = 0.75f), radius = 1.4f, center = Offset(x3, size.height * 0.35f))
                         }
                     }
                     Text(
-                        text = "SAMURAI JACK",
-                        color = Color(0xFFCED8E2),
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.9.sp,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .offset(y = (-12).dp)
-                    )
-                    Text(
-                        text = "${playerHealth.toInt()} HP",
+                        text = "${playerHealth.toInt()}",
                         color = Color.White,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.ExtraBold,
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -1406,8 +927,8 @@ fun GameplayHUD(
                 .padding(horizontal = 22.dp, vertical = 8.dp)
         ) {
             Text(
-                text = if (enemiesRemaining > 0) "ENEMIES: $enemiesRemaining" else "STAGE CLEAR!",
-                color = if (enemiesRemaining > 0) Color.White else Color(0xFFFFCC00),
+                text = "ENEMIES: $enemiesRemaining",
+                color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.6.sp
@@ -1951,41 +1472,3 @@ fun GameOverScreen(onRetry: () -> Unit, onMenu: () -> Unit) {
     }
 }
 
-@Composable
-fun GameCompleteScreen(onMenu: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.main_background),
-            contentDescription = "Background",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-        )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "THE JOURNEY IS COMPLETE",
-                color = Color(0xFFFFCC00),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 6.sp
-            )
-            Text(
-                text = "Jack has defeated Aku, destroyed the portals, and returned to the past.",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontFamily = FontFamily.Serif,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 16.dp, bottom = 48.dp, start = 32.dp, end = 32.dp)
-            )
-
-            MenuButton("RETURN TO MENU", onMenu, isPrimary = true)
-        }
-    }
-}

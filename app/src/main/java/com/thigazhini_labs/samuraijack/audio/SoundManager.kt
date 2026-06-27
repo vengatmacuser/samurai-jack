@@ -23,14 +23,12 @@ object SoundManager {
 
     // Synthesizer active parameters
     @Volatile var isRunning = false
-    @Volatile var currentStage = 1
     @Volatile var isLowHealthHeartbeatActive = false
 
     // Sound effect trigger states
     // Stores: soundName -> Time index or decay samples left
     private val activeEffects = ConcurrentHashMap<String, Int>()
     private val effectEnvelopes = ConcurrentHashMap<String, Float>()
-    private val effectFrequencies = ConcurrentHashMap<String, Float>()
 
     fun start(context: Context) {
         if (isRunning) return
@@ -192,63 +190,6 @@ object SoundManager {
     fun triggerSpecialCharge() {
         activeEffects["charge"] = 0
         effectEnvelopes["charge"] = 1.0f
-    }
-
-    // Procedural Music Engine matching each level's specific theme
-    private fun generateMusic(time: Long, noteStep: Int): Double {
-        val t = time.toDouble() / SAMPLE_RATE
-
-        // Pentatonic Scale notes (frequencies in Hz)
-        val kotoScale = doubleArrayOf(220.0, 247.0, 262.0, 330.0, 392.0, 440.0)
-        val industrialScale = doubleArrayOf(110.0, 130.8, 146.8, 164.8, 196.0, 220.0)
-
-        return when (currentStage) {
-            1, 5, 13 -> { // Epic Battle (Aku / Ronin) - Heavy Taiko drum & metallic synths
-                // Beat sequencer (heavy base frequency kick)
-                val beat = noteStep % 8
-                val isKick = (beat == 0 || beat == 3 || beat == 4 || beat == 6)
-                val drum = if (isKick) {
-                    val drumPhase = (time % (SAMPLE_RATE / 4)).toDouble() / SAMPLE_RATE
-                    sin(2.0 * Math.PI * 65.0 * drumPhase) * Math.exp(-35.0 * drumPhase)
-                } else 0.0
-
-                // Tension synth note
-                val noteIdx = (noteStep / 4) % kotoScale.size
-                val freq = kotoScale[noteIdx]
-                val synth = sin(2.0 * Math.PI * freq * t) * (0.5 + 0.5 * sin(2.0 * Math.PI * 4.0 * t))
-                
-                drum * 0.7 + synth * 0.3
-            }
-            2, 3, 4 -> { // Traditional Japanese (Prince / Training) - Zen bamboo flute & soft koto plucks
-                val beat = noteStep % 16
-                val playNote = (beat == 0 || beat == 4 || beat == 8 || beat == 10 || beat == 12)
-                if (playNote) {
-                    val noteIdx = (noteStep) % kotoScale.size
-                    val freq = kotoScale[noteIdx]
-                    val envelope = Math.exp(-2.5 * ((time % (SAMPLE_RATE / 2)).toDouble() / SAMPLE_RATE))
-                    sin(2.0 * Math.PI * freq * t) * envelope
-                } else {
-                    0.0
-                }
-            }
-            6, 7, 8 -> { // Cyberpunk Futurology (Machines / Portals) - Fast arpeggiated synth wave
-                // 16th note arpeggiation (very fast)
-                val arpeggio = noteStep % 4
-                val noteIdx = (noteStep / 4 + arpeggio) % industrialScale.size
-                val freq = industrialScale[noteIdx]
-                val envelope = Math.exp(-8.0 * ((time % (SAMPLE_RATE / 8)).toDouble() / SAMPLE_RATE))
-                
-                // Sawtooth wave-like buzz
-                val phase = (time.toDouble() * freq / SAMPLE_RATE) % 1.0
-                val saw = (phase * 2.0 - 1.0) * envelope
-                saw * 0.6
-            }
-            else -> { // Dark Wastelands (Beast / Lava Guardian) - Ominous wind drone & low tension pulses
-                val lowDrone = sin(2.0 * Math.PI * 82.41 * t) // Low E drone
-                val dynamicWobble = sin(2.0 * Math.PI * 0.5 * t) // slow swell
-                lowDrone * (0.6 + 0.4 * dynamicWobble)
-            }
-        }
     }
 
     private fun generateHeartbeat(time: Long): Double {
