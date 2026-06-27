@@ -172,26 +172,6 @@ object SoundManager {
         effectEnvelopes["slash"] = 1.0f
     }
 
-    fun triggerHit() {
-        activeEffects["hit"] = 0
-        effectEnvelopes["hit"] = 1.0f
-    }
-
-    fun triggerLaser() {
-        activeEffects["laser"] = 0
-        effectEnvelopes["laser"] = 1.0f
-    }
-
-    fun triggerExplosion() {
-        activeEffects["explosion"] = 0
-        effectEnvelopes["explosion"] = 1.0f
-    }
-
-    fun triggerSpecialCharge() {
-        activeEffects["charge"] = 0
-        effectEnvelopes["charge"] = 1.0f
-    }
-
     private fun generateHeartbeat(time: Long): Double {
         val t = time.toDouble() / SAMPLE_RATE
         val beatRate = 1.2 // beats per second
@@ -230,87 +210,6 @@ object SoundManager {
             } else {
                 activeEffects.remove("slash")
                 effectEnvelopes.remove("slash")
-            }
-        }
-
-        // Metal Hit effect: Resonant ring + noise
-        activeEffects["hit"]?.let { sampleOffset ->
-            val env = effectEnvelopes["hit"] ?: 0f
-            if (env > 0.01f) {
-                activeEffects["hit"] = sampleOffset + 1024
-
-                val t = sampleOffset.toDouble() / SAMPLE_RATE
-                // Metallic ring component (high frequency + subharmonic)
-                val ring = sin(2.0 * Math.PI * 1800.0 * t) * Math.exp(-25.0 * t) +
-                           sin(2.0 * Math.PI * 1250.0 * t) * Math.exp(-15.0 * t)
-                
-                // Noise click component (sword contact crunch)
-                val click = (Random.nextFloat() * 2.0f - 1.0f) * Math.exp(-100.0 * t)
-
-                effectMix += (ring * 0.5 + click * 0.5) * env * 0.8
-                effectEnvelopes["hit"] = env * 0.92f
-            } else {
-                activeEffects.remove("hit")
-                effectEnvelopes.remove("hit")
-            }
-        }
-
-        // Laser blast effect: Sweep down from 3200Hz to 400Hz
-        activeEffects["laser"]?.let { sampleOffset ->
-            val env = effectEnvelopes["laser"] ?: 0f
-            if (env > 0.01f) {
-                activeEffects["laser"] = sampleOffset + 1024
-
-                val duration = SAMPLE_RATE * 0.3
-                val progress = sampleOffset.toDouble() / duration
-                val freq = 3200.0 - 2800.0 * progress.coerceIn(0.0, 1.0)
-
-                val phase = (sampleOffset.toDouble() * freq / SAMPLE_RATE)
-                // Square wave buzz
-                val square = if (sin(2.0 * Math.PI * phase) > 0.0) 1.0 else -1.0
-                effectMix += square * env * 0.4
-                effectEnvelopes["laser"] = env * 0.96f
-            } else {
-                activeEffects.remove("laser")
-                effectEnvelopes.remove("laser")
-            }
-        }
-
-        // Explosion effect: Low pitch brown-like noise decay
-        activeEffects["explosion"]?.let { sampleOffset ->
-            val env = effectEnvelopes["explosion"] ?: 0f
-            if (env > 0.01f) {
-                activeEffects["explosion"] = sampleOffset + 1024
-
-                val t = sampleOffset.toDouble() / SAMPLE_RATE
-                val noise = Random.nextDouble() * 2.0 - 1.0
-                
-                // Simple low pass filter simulation via rolling average (low frequency rumble)
-                val rumble = noise * Math.exp(-4.0 * t)
-                
-                effectMix += rumble * env * 0.9
-                effectEnvelopes["explosion"] = env * 0.98f
-            } else {
-                activeEffects.remove("explosion")
-                effectEnvelopes.remove("explosion")
-            }
-        }
-
-        // Special charge effect: Rising pitch arpeggio
-        activeEffects["charge"]?.let { sampleOffset ->
-            val env = effectEnvelopes["charge"] ?: 0f
-            if (env > 0.01f) {
-                activeEffects["charge"] = sampleOffset + 1024
-
-                val t = sampleOffset.toDouble() / SAMPLE_RATE
-                // Sweep frequency UP
-                val freq = 300.0 + 1200.0 * (sampleOffset.toDouble() / (SAMPLE_RATE * 1.5))
-                effectMix += sin(2.0 * Math.PI * freq * t) * env * 0.6
-                
-                effectEnvelopes["charge"] = env * 0.99f
-            } else {
-                activeEffects.remove("charge")
-                effectEnvelopes.remove("charge")
             }
         }
 

@@ -1,6 +1,5 @@
 package com.thigazhini_labs.samuraijack.engine
 
-import android.opengl.Matrix
 import kotlin.math.sqrt
 
 data class Vector3(var x: Float = 0f, var y: Float = 0f, var z: Float = 0f) {
@@ -29,28 +28,4 @@ data class Vector3(var x: Float = 0f, var y: Float = 0f, var z: Float = 0f) {
     }
 }
 
-data class BoundingSphere(val center: Vector3, val radius: Float) {
-    fun intersects(other: BoundingSphere): Boolean {
-        return center.dist(other.center) <= (radius + other.radius)
-    }
-}
 
-object MatrixUtil {
-    fun createIdentity(): FloatArray {
-        val m = FloatArray(16)
-        Matrix.setIdentityM(m, 0)
-        return m
-    }
-
-    fun createMVP(
-        modelMatrix: FloatArray,
-        viewMatrix: FloatArray,
-        projectionMatrix: FloatArray
-    ): FloatArray {
-        val temp = FloatArray(16)
-        val mvp = FloatArray(16)
-        Matrix.multiplyMM(temp, 0, viewMatrix, 0, modelMatrix, 0)
-        Matrix.multiplyMM(mvp, 0, projectionMatrix, 0, temp, 0)
-        return mvp
-    }
-}

@@ -83,7 +83,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
         }
     }
 
-    private fun getStageBackgroundResId(stageIndex: Int): Int {
+    private fun getStageBackgroundResId(): Int {
         return com.thigazhini_labs.samuraijack.R.drawable.bg_stage1_outside
     }
 
@@ -243,7 +243,7 @@ class GLRenderer(private val context: android.content.Context) : GLSurfaceView.R
                     val texId = if (mesh.silhouetteMode == 4 && mesh.textureName != null) {
                         loadAssetTexture(mesh.textureName!!)
                     } else {
-                        val texResId = getStageBackgroundResId(currentStageIndex)
+                        val texResId = getStageBackgroundResId()
                         getTexture(texResId)
                     }
                     GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
